@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — 2026-07-20 · « Simulateur headless »
+
+- Binaire `petsim` : simulation d'un pet sans affichage ni GNOME.
+- Tests d'instantané figeant la trace de trois pets de référence.
+- Garde-fou : aucun pet ne dérive de façon absurde, toutes graines confondues
+  (la sortie d'écran documentée en §4.7 reste autorisée).
+- README décrivant l'état du portage et la façon de l'essayer.
+
 ## 0.8.1 — 2026-07-20 · « Durcissements de revue »
 
 - Test anti-sortie d'écran : bornes ressserrées pour refléter le clampage

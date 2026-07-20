@@ -1,0 +1,15 @@
+[package]
+name = "petsim"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+pet-expr = { path = "../pet-expr" }
+pet-format = { path = "../pet-format" }
+pet-engine = { path = "../pet-engine" }
+clap.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
