@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 — 2026-07-20 · « État d'animation »
+
+- Crate `pet-engine` : calcul du nombre de pas, répétitions partielles.
+- Choix de la frame affichée, y compris pendant les boucles.
+- Interpolation fidèle au moteur d'origine, avec ses deux dénominateurs.
+
 ## 0.5.0 — 2026-07-20 · « Décodage des spritesheets »
 
 - Décodage base64 avec padding automatique des flux non padés.
