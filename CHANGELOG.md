@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — 2026-07-20 · « Physique du pet »
+
+- Apparition pondérée, avec miroir de la position si le pet est retourné.
+- Détection des quatre bords de la zone de travail, avec clampage.
+- Gravité et tolérance de 3 px avant déclenchement d'une chute.
+- Glisser-déposer suspendant la physique, animations `drag` et `fall`.
+- Retournement par l'action `flip`, appliqué au rendu et non aux pixels.
+- Simulation reproductible à graine égale.
+
 ## 0.7.0 — 2026-07-20 · « Transitions d'animation »
 
 - Filtrage contextuel des transitions par drapeaux `only`.

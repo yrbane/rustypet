@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "pet-engine"
-version = "0.6.0"
+version = "0.8.0"
 dependencies = [
  "pet-expr",
  "pet-format",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "pet-expr"
-version = "0.6.0"
+version = "0.8.0"
 dependencies = [
  "rand",
  "thiserror",
@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "pet-format"
-version = "0.6.0"
+version = "0.8.0"
 dependencies = [
  "base64",
  "image",
