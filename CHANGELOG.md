@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1 — 2026-07-20 · « Durcissements de revue »
+
+- Test anti-sortie d'écran : bornes ressserrées pour refléter le clampage
+  réel de la physique, sans tolérance aux marges.
+- Accès non paniquant dans le spawn : remplacement de l'indexation directe
+  par `.get()` pour éliminer tout risque de panique en bibliothèque.
+
 ## 0.8.0 — 2026-07-20 · « Physique du pet »
 
 - Apparition pondérée, avec miroir de la position si le pet est retourné.

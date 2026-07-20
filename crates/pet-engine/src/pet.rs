@@ -155,23 +155,22 @@ impl Pet {
         self.refresh_context(world);
 
         let spawns = &self.definition.spawns;
-        let (x, y, next) = match pick_spawn(spawns, rng) {
-            Some(index) => {
-                let mut spawn = spawns[index].clone();
-                spawn.x.update(&self.ctx, rng, false);
-                spawn.y.update(&self.ctx, rng, false);
-                (spawn.x.get(), spawn.y.get(), spawn.next)
-            }
+        let spawn_option = pick_spawn(spawns, rng).and_then(|index| spawns.get(index));
+
+        let (x, y, next) = if let Some(spawn) = spawn_option {
+            let mut spawn = spawn.clone();
+            spawn.x.update(&self.ctx, rng, false);
+            spawn.y.update(&self.ctx, rng, false);
+            (spawn.x.get(), spawn.y.get(), spawn.next)
+        } else {
             // Spawn de secours quand le XML n'en définit aucun (§5.1).
-            None => {
-                let first = self
-                    .definition
-                    .animations
-                    .first()
-                    .map(|a| a.id)
-                    .unwrap_or(1);
-                (0, 0, first)
-            }
+            let first = self
+                .definition
+                .animations
+                .first()
+                .map(|a| a.id)
+                .unwrap_or(1);
+            (0, 0, first)
         };
 
         // Miroir horizontal de la position d'apparition si le pet est retourné.
@@ -490,12 +489,14 @@ mod tests {
         for step in 0..2000 {
             pet.tick(&world, &mut rng);
             let (x, y) = pet.position();
+            // Clampage strict : le pet reste dans [area.x, area.right() - tile_w]
+            // horizontalement et [area.y, area.bottom() - tile_h] verticalement.
             assert!(
-                x >= world.area.x - 32 && x <= world.area.right(),
+                x >= world.area.x && x <= world.area.right() - 32,
                 "sorti horizontalement au pas {step} : x = {x}"
             );
             assert!(
-                y >= world.area.y - 32 && y <= world.area.bottom(),
+                y >= world.area.y && y <= world.area.bottom() - 32,
                 "sorti verticalement au pas {step} : y = {y}"
             );
         }
