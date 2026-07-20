@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 — 2026-07-20 · « Transitions d'animation »
+
+- Filtrage contextuel des transitions par drapeaux `only`.
+- Tirage pondéré cumulatif, identique à l'algorithme d'origine.
+- Tirage du point d'apparition, pondéré par les probabilités de spawn.
+
 ## 0.6.0 — 2026-07-20 · « État d'animation »
 
 - Crate `pet-engine` : calcul du nombre de pas, répétitions partielles.
