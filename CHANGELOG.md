@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 — 2026-07-20 · « Correctifs de revue »
+
+- Nouvelle variante d'erreur `UnexpectedToken` pour distinguer les jetons
+  inattendu en milieu d'expression (ex. `*5`, `)`) du vrai cas
+  d'expression incomplète (ex. `2+`).
+- `eval_arithmetic` signale les jetons excédentaires comme `UnexpectedToken`
+  au lieu de `UnbalancedParen`.
+- `parse_atom` renvoie `UnexpectedToken` pour les jetons inatendus au lieu
+  de la vague `UnexpectedEnd`.
+- Tests ajoutés : associativité gauche des opérateurs non commutatifs
+  (soustraction, division, modulo) et les deux nouveaux cas d'erreur.
+
 ## 0.2.0 — 2026-07-20 · « Évaluateur arithmétique »
 
 - Lexer et parseur à descente récursive pour les expressions des animations.

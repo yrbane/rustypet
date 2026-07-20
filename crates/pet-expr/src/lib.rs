@@ -11,6 +11,8 @@ pub use parser::eval_arithmetic;
 pub enum ExprError {
     #[error("caractère inattendu : {0}")]
     UnexpectedChar(char),
+    #[error("jeton inattendu : {0}")]
+    UnexpectedToken(String),
     #[error("expression incomplète")]
     UnexpectedEnd,
     #[error("parenthèses déséquilibrées")]

@@ -3,6 +3,20 @@
 use crate::ExprError;
 use crate::lexer::{Token, tokenize};
 
+/// Crée une description textuelle d'un jeton pour les messages d'erreur.
+fn token_description(token: &Token) -> String {
+    match token {
+        Token::Number(n) => format!("nombre {}", n),
+        Token::Plus => "opérateur +".to_string(),
+        Token::Minus => "opérateur -".to_string(),
+        Token::Star => "opérateur *".to_string(),
+        Token::Slash => "opérateur /".to_string(),
+        Token::Percent => "opérateur %".to_string(),
+        Token::LParen => "parenthèse ouvrante".to_string(),
+        Token::RParen => "parenthèse fermante".to_string(),
+    }
+}
+
 /// Évalue une expression arithmétique ne contenant plus aucun jeton symbolique.
 pub fn eval_arithmetic(input: &str) -> Result<f64, ExprError> {
     let tokens = tokenize(input)?;
@@ -12,7 +26,8 @@ pub fn eval_arithmetic(input: &str) -> Result<f64, ExprError> {
     };
     let value = parser.parse_sum()?;
     if parser.pos != parser.tokens.len() {
-        return Err(ExprError::UnbalancedParen);
+        let token = parser.peek().expect("token should exist");
+        return Err(ExprError::UnexpectedToken(token_description(token)));
     }
     Ok(value)
 }
@@ -110,7 +125,7 @@ impl<'a> Parser<'a> {
                     _ => Err(ExprError::UnbalancedParen),
                 }
             }
-            Some(_) => Err(ExprError::UnexpectedEnd),
+            Some(token) => Err(ExprError::UnexpectedToken(token_description(&token))),
             None => Err(ExprError::UnexpectedEnd),
         }
     }
@@ -173,6 +188,60 @@ mod tests {
         assert!(matches!(
             eval_arithmetic("1/0"),
             Err(ExprError::DivisionByZero)
+        ));
+    }
+
+    #[test]
+    fn respecte_associativite_soustraction() {
+        // (10 - 3) - 2 = 7 - 2 = 5 (pas 10 - (3 - 2) = 10 - 1 = 9)
+        assert_eq!(eval_arithmetic("10-3-2").unwrap(), 5.0);
+    }
+
+    #[test]
+    fn respecte_associativite_division() {
+        // (100 / 5) / 2 = 20 / 2 = 10 (pas 100 / (5 / 2) = 100 / 2.5 = 40)
+        assert_eq!(eval_arithmetic("100/5/2").unwrap(), 10.0);
+    }
+
+    #[test]
+    fn respecte_associativite_modulo() {
+        // (20 % 7) % 4 = 6 % 4 = 2 (pas 20 % (7 % 4) = 20 % 3 = 2, mais la precedence est importante)
+        assert_eq!(eval_arithmetic("20%7%4").unwrap(), 2.0);
+    }
+
+    #[test]
+    fn refuse_operateur_au_debut() {
+        // Un opérateur au début : "*5"
+        assert!(matches!(
+            eval_arithmetic("*5"),
+            Err(ExprError::UnexpectedToken(_))
+        ));
+    }
+
+    #[test]
+    fn refuse_parenthese_fermante_seule() {
+        // Une parenthèse fermante sans ouvrante : ")"
+        assert!(matches!(
+            eval_arithmetic(")"),
+            Err(ExprError::UnexpectedToken(_))
+        ));
+    }
+
+    #[test]
+    fn refuse_jetons_excedentaires() {
+        // Deux nombres sans opérateur : "2 3"
+        assert!(matches!(
+            eval_arithmetic("2 3"),
+            Err(ExprError::UnexpectedToken(_))
+        ));
+    }
+
+    #[test]
+    fn verifie_parenthese_non_fermee() {
+        // Parenthèse non fermée : "(2+3"
+        assert!(matches!(
+            eval_arithmetic("(2+3"),
+            Err(ExprError::UnbalancedParen)
         ));
     }
 }
