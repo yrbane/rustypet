@@ -9,3 +9,5 @@ license.workspace = true
 pet-expr = { path = "../pet-expr" }
 quick-xml.workspace = true
 thiserror.workspace = true
+base64.workspace = true
+image.workspace = true

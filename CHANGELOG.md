@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 — 2026-07-20 · « Décodage des spritesheets »
+
+- Décodage base64 avec padding automatique des flux non padés.
+- Couleur clé convertie en alpha 0, alpha existant préservé.
+- Découpe des tuiles en ligne d'abord, conforme aux index `<frame>`.
+- La limite Win32 de 255 px et le facteur d'échelle entier ne sont pas portés.
+
 ## 0.4.1 — 2026-07-20 · « Correctifs de revue »
 
 - Marquage du test `parse_le_corpus_complet` comme ignoré (nécessite `RUSTYPET_CORPUS`).

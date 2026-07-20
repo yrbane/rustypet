@@ -3,9 +3,11 @@
 
 mod model;
 mod parse;
+mod sprites;
 
 pub use model::*;
 pub use parse::parse_pet;
+pub use sprites::*;
 
 /// Erreur de lecture d'un pet.
 #[derive(Debug, thiserror::Error)]
@@ -16,4 +18,8 @@ pub enum FormatError {
     MissingRoot,
     #[error("élément obligatoire absent : <{0}>")]
     MissingElement(&'static str),
+    #[error("base64 invalide : {0}")]
+    Base64(String),
+    #[error("image invalide : {0}")]
+    Image(String),
 }
