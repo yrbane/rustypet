@@ -441,7 +441,13 @@ mod tests {
     fn le_pet_ne_sort_pas_par_la_gauche() {
         let (mut pet, world, mut rng) = make_pet();
         pet.spawn(&world, &mut rng);
-        pet.set_flipped(true); // se déplace vers la gauche
+        // L'animation par défaut de ce pet de test avance vers la droite
+        // (start.x = 5, cf. XML plus haut) ; `set_flipped(true)` met donc
+        // `moving_left` à `false`, ce qui nie ce déplacement et fait
+        // effectivement avancer le pet vers la gauche (vérifié : la position
+        // décroît de 5 px par tick). Sans ce retournement, le test serait
+        // trivialement vert puisque le pet s'éloignerait du bord gauche.
+        pet.set_flipped(true);
         pet.set_position(2, 200);
         for _ in 0..10 {
             pet.tick(&world, &mut rng);

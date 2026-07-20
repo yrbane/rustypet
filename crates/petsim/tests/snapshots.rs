@@ -1,8 +1,7 @@
 //! La trace d'un pet doit rester identique d'une exécution à l'autre, et
 //! d'une version à l'autre tant que le moteur n'évolue pas volontairement.
 
-use pet_engine::{Pet, TickOutcome, World};
-use pet_expr::SeededRng;
+use pet_engine::{Pet, SeededRng, TickOutcome, World};
 use pet_format::{decode_sheet, parse_pet};
 use std::sync::Arc;
 

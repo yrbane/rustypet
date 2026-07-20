@@ -4,8 +4,7 @@
 //! reproductible à graine égale.
 
 use clap::Parser;
-use pet_engine::{Pet, TickOutcome, World};
-use pet_expr::SeededRng;
+use pet_engine::{Pet, SeededRng, TickOutcome, World};
 use pet_format::{decode_sheet, parse_pet};
 use std::sync::Arc;
 

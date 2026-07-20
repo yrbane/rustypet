@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.2 — 2026-07-20 · « Retouches de revue »
+
+- Factorisation du tirage pondéré cumulatif de `pick_next` et `pick_spawn`
+  dans une fonction privée `weighted_index`, sans changement de
+  comportement (le cas « poids total nul » reste géré à l'identique par
+  chaque appelant).
+- Réexport de `PetRng` et `SeededRng` (crate `pet-expr`) depuis
+  `pet-engine`, pour que les consommateurs n'aient plus à dépendre
+  directement de `pet-expr` pour nommer le générateur aléatoire ;
+  suppression de cette dépendance devenue inutile dans `petsim`.
+- Correction d'un commentaire de test dans `pet.rs`
+  (`le_pet_ne_sort_pas_par_la_gauche`) : clarification de la sémantique de
+  `set_flipped(true)` sur ce pet de test (animation par défaut vers la
+  droite, retournée vers la gauche), pour éviter toute confusion avec la
+  documentation générale du champ `moving_left`. Comportement et résultat
+  du test inchangés.
+
 ## 0.9.1 — 2026-07-20 · « Invariants physiques »
 
 - Remplacement du test `aucun_pet_ne_sort_de_l_ecran` (tolérance de 50 000 px

@@ -311,7 +311,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "pet-engine"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "pet-expr",
  "pet-format",
@@ -319,7 +319,7 @@ dependencies = [
 
 [[package]]
 name = "pet-expr"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "rand",
  "thiserror",
@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "pet-format"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "base64",
  "image",
@@ -338,12 +338,11 @@ dependencies = [
 
 [[package]]
 name = "petsim"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "clap",
  "insta",
  "pet-engine",
- "pet-expr",
  "pet-format",
 ]
 

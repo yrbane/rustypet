@@ -4,6 +4,37 @@
 use pet_expr::PetRng;
 use pet_format::{NextAnimation, OnlyFlags, Spawn};
 
+/// Tire un index pondéré cumulatif parmi `weights`.
+///
+/// Effectue le tirage pondéré cumulatif commun à `pick_next` et `pick_spawn` :
+/// on tire une valeur dans `[0, somme]` et on retient le premier index dont
+/// le cumul atteint ou dépasse ce tirage.
+///
+/// Retourne `None` si `weights` est vide. Si la somme des poids (négatifs
+/// ramenés à 0) est nulle, retourne `Some(0)` : c'est aux appelants d'adapter
+/// ce cas selon leur sémantique propre (voir `pick_next` et `pick_spawn`).
+fn weighted_index(weights: &[i32], rng: &mut dyn PetRng) -> Option<usize> {
+    if weights.is_empty() {
+        return None;
+    }
+
+    let total: i32 = weights.iter().map(|w| (*w).max(0)).sum();
+    if total <= 0 {
+        return Some(0);
+    }
+
+    let draw = rng.gen_range_i32(0, total);
+    let mut cumulative = 0;
+    for (index, weight) in weights.iter().enumerate() {
+        cumulative += (*weight).max(0);
+        if cumulative >= draw {
+            return Some(index);
+        }
+    }
+
+    Some(weights.len() - 1)
+}
+
 /// Choisit la prochaine animation parmi les candidates éligibles au contexte.
 ///
 /// Filtre d'abord les candidates dont le drapeau `only` ne correspond pas au
@@ -27,21 +58,10 @@ pub fn pick_next(
         return None;
     }
 
-    let total: i32 = eligible.iter().map(|c| c.probability.max(0)).sum();
-    if total <= 0 {
-        return eligible.first().map(|c| c.id);
-    }
-
-    let draw = rng.gen_range_i32(0, total);
-    let mut cumulative = 0;
-    for candidate in &eligible {
-        cumulative += candidate.probability.max(0);
-        if cumulative >= draw {
-            return Some(candidate.id);
-        }
-    }
-
-    eligible.last().map(|c| c.id)
+    let weights: Vec<i32> = eligible.iter().map(|c| c.probability).collect();
+    // Poids total nul : `weighted_index` renvoie `Some(0)`, on garde donc la
+    // première candidate, comme avant la factorisation.
+    weighted_index(&weights, rng).map(|index| eligible[index].id)
 }
 
 /// Choisit un point d'apparition, pondéré par les probabilités.
@@ -49,25 +69,8 @@ pub fn pick_next(
 /// Même algorithme que `pick_next`, sans filtrage contextuel : les points
 /// d'apparition ne sont pas soumis aux drapeaux `only`.
 pub fn pick_spawn(spawns: &[Spawn], rng: &mut dyn PetRng) -> Option<usize> {
-    if spawns.is_empty() {
-        return None;
-    }
-
-    let total: i32 = spawns.iter().map(|s| s.probability.max(0)).sum();
-    if total <= 0 {
-        return Some(0);
-    }
-
-    let draw = rng.gen_range_i32(0, total);
-    let mut cumulative = 0;
-    for (index, spawn) in spawns.iter().enumerate() {
-        cumulative += spawn.probability.max(0);
-        if cumulative >= draw {
-            return Some(index);
-        }
-    }
-
-    Some(spawns.len() - 1)
+    let weights: Vec<i32> = spawns.iter().map(|s| s.probability).collect();
+    weighted_index(&weights, rng)
 }
 
 #[cfg(test)]
