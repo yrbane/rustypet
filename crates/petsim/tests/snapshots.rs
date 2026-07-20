@@ -54,53 +54,58 @@ fn trace_de_pingus() {
     insta::assert_snapshot!(trace("pingus", 300, 42));
 }
 
-/// Aucun pet ne doit s'enfuir de façon absurde, quelle que soit la graine.
-///
-/// D'après `docs/reference/esheep-engine.md` §4.7 (« Sortie d'écran »), une
+/// Le confinement à l'écran n'est *pas* un invariant du moteur eSheep :
+/// d'après `docs/reference/esheep-engine.md` §4.7 (« Sortie d'écran »), une
 /// animation sans `<border>` laisse volontairement le pet continuer tout
-/// droit : dans le moteur d'origine la fenêtre est alors rognée visuellement
-/// (rendu, hors sujet ici) mais la position logique, elle, continue de
-/// dériver. C'est le cas réel de `run_catchb` chez Neko, qui boucle sur
-/// elle-même sans jamais redéfinir de bord : sur seed 1, le chat dérive
-/// jusqu'à x = -6712 en 1000 pas, ce qui est correct et attendu.
+/// droit (rognage purement visuel à l'affichage, hors sujet ici). C'est le
+/// cas réel de `run_catchb` chez Neko. Vérifier une absence de sortie
+/// d'écran ne peut donc que se faire au prix d'une tolérance énorme qui ne
+/// détecte plus rien d'utile.
 ///
-/// Cette garde ne vérifie donc pas « toujours visible à l'écran » (faux par
-/// conception), mais l'absence d'emballement anormal : une dérive au-delà de
-/// quelques dizaines de milliers de pixels trahirait un vrai bug (boucle
-/// d'accumulation, dépassement arithmétique), pas un comportement de fuite
-/// documenté.
+/// À la place, on vérifie ce qui reste réellement vrai, quel que soit le
+/// pet, la graine ou l'animation en cours, et que casserait une régression
+/// de physique ou d'indexation de sprite :
+/// - la simulation tourne jusqu'au bout sans paniquer, sur un nombre de pas
+///   conséquent ;
+/// - l'opacité restituée par `Pet::draw()` reste dans `[0.0, 1.0]` ;
+/// - la frame affichée est toujours un index valide du spritesheet décodé
+///   pour ce pet.
 #[test]
-fn aucun_pet_ne_sort_de_l_ecran() {
-    const MARGE: i32 = 50_000;
+fn les_invariants_physiques_tiennent() {
+    const STEPS: u32 = 1000;
 
     for name in ["neko", "esheep64", "pingus"] {
-        for seed in [1, 2, 3, 99, 12345] {
-            let path = format!(
-                "{}/../pet-format/tests/fixtures/{name}.xml",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            let xml = std::fs::read_to_string(&path).expect("fixture lisible");
-            let definition = Arc::new(parse_pet(&xml).expect("parsing"));
-            let sheet = decode_sheet(&definition.image).expect("spritesheet");
+        let path = format!(
+            "{}/../pet-format/tests/fixtures/{name}.xml",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let xml = std::fs::read_to_string(&path).expect("fixture lisible");
+        let definition = Arc::new(parse_pet(&xml).expect("parsing"));
+        let sheet = decode_sheet(&definition.image).expect("spritesheet");
+        let tile_count = sheet.tile_count();
 
+        for seed in [1, 2, 3, 99, 12345] {
             let world = World::simple(1920, 1080);
             let mut rng = SeededRng::new(seed);
             let tile = (sheet.tile_w as i32, sheet.tile_h as i32);
-            let mut pet = Pet::new(definition, tile, &world);
+            let mut pet = Pet::new(Arc::clone(&definition), tile, &world);
             pet.spawn(&world, &mut rng);
 
-            for step in 0..1000 {
+            for step in 0..STEPS {
                 if pet.tick(&world, &mut rng) == TickOutcome::Respawn {
                     pet.spawn(&world, &mut rng);
                 }
-                let (x, y) = pet.position();
+                let d = pet.draw();
+
                 assert!(
-                    x >= -MARGE && x <= world.area.right() + MARGE,
-                    "{name} graine {seed} pas {step} : emballement en x = {x}"
+                    (0.0..=1.0).contains(&d.opacity),
+                    "{name} graine {seed} pas {step} : opacité hors bornes = {}",
+                    d.opacity
                 );
                 assert!(
-                    y >= -MARGE && y <= world.area.bottom() + MARGE,
-                    "{name} graine {seed} pas {step} : emballement en y = {y}"
+                    d.frame >= 0 && (d.frame as u32) < tile_count,
+                    "{name} graine {seed} pas {step} : frame invalide = {} (tile_count = {tile_count})",
+                    d.frame
                 );
             }
         }

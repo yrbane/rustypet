@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.1 — 2026-07-20 · « Invariants physiques »
+
+- Remplacement du test `aucun_pet_ne_sort_de_l_ecran` (tolérance de 50 000 px
+  vidée de son sens) par `les_invariants_physiques_tiennent` : opacité dans
+  `[0.0, 1.0]` et frame toujours un index valide du spritesheet décodé,
+  vérifiés sur 1000 pas, pour `neko`, `esheep64` et `pingus`, sur les graines
+  1, 2, 3, 99 et 12345.
+- Le confinement à l'écran n'était pas un invariant réel du moteur (cf.
+  `docs/reference/esheep-engine.md` §4.7, sortie d'écran documentée de
+  `run_catchb`) : la nouvelle garde ne dépend plus d'un plafond arbitraire.
+
 ## 0.9.0 — 2026-07-20 · « Simulateur headless »
 
 - Binaire `petsim` : simulation d'un pet sans affichage ni GNOME.
