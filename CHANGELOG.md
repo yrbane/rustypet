@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-07-20 · « Substitution des jetons »
+
+- Contexte d'évaluation portant les 11 jetons du moteur d'origine.
+- RNG injecté via le trait `PetRng`, implémentation seedée reproductible.
+- `random` uniforme sur toute l'expression, `randS` figé par chargement.
+- Miroir horizontal du placement des enfants sous parent retourné.
+- Classification `is_dynamic` / `is_screen` des valeurs.
+
 ## 0.2.2 — 2026-07-20 · « Correctif de revue »
 
 - Suppression du `.expect()` en code de bibliothèque : traitement explicite
