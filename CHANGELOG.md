@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-07-20 · « Lecture des animations.xml »
+
+- Crate `pet-format` : modèle de données complet du format eSheep.
+- Parsing tolérant à l'ordre libre des sous-éléments et aux champs absents.
+- Drapeaux de contexte `only`, `horizontal+` traité comme `horizontal`.
+- Les 22 pets du dépôt amont parsent sans erreur.
+
 ## 0.3.0 — 2026-07-20 · « Substitution des jetons »
 
 - Contexte d'évaluation portant les 11 jetons du moteur d'origine.

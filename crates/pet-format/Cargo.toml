@@ -1,0 +1,11 @@
+[package]
+name = "pet-format"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+pet-expr = { path = "../pet-expr" }
+quick-xml.workspace = true
+thiserror.workspace = true
