@@ -35,6 +35,7 @@ fn parse_les_fixtures() {
 /// Le corpus complet du dépôt amont, si disponible. Activé par la variable
 /// d'environnement RUSTYPET_CORPUS.
 #[test]
+#[ignore = "Nécessite la variable RUSTYPET_CORPUS pointant vers le dépôt eSheep (yrbane/desktopPet)"]
 fn parse_le_corpus_complet() {
     let Ok(dir) = std::env::var("RUSTYPET_CORPUS") else {
         eprintln!("RUSTYPET_CORPUS non défini, test ignoré");

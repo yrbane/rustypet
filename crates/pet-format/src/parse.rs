@@ -342,7 +342,7 @@ mod tests {
     }
 
     #[test]
-    fn end_absent_vaut_start() {
+    fn end_absent_reste_absent() {
         let pet = parse_pet(MINIMAL).unwrap();
         assert!(pet.animations[0].end.is_none());
     }

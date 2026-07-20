@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 — 2026-07-20 · « Correctifs de revue »
+
+- Marquage du test `parse_le_corpus_complet` comme ignoré (nécessite `RUSTYPET_CORPUS`).
+- Renommage du test `end_absent_vaut_start` en `end_absent_reste_absent` pour clarifier son intention.
+- Création du README.md avec section Développement.
+
 ## 0.4.0 — 2026-07-20 · « Lecture des animations.xml »
 
 - Crate `pet-format` : modèle de données complet du format eSheep.
