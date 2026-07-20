@@ -26,10 +26,13 @@ pub fn eval_arithmetic(input: &str) -> Result<f64, ExprError> {
     };
     let value = parser.parse_sum()?;
     if parser.pos != parser.tokens.len() {
-        let token = parser.peek().expect("token should exist");
-        return Err(ExprError::UnexpectedToken(token_description(token)));
+        match parser.peek() {
+            Some(token) => Err(ExprError::UnexpectedToken(token_description(token))),
+            None => Err(ExprError::UnexpectedEnd),
+        }
+    } else {
+        Ok(value)
     }
-    Ok(value)
 }
 
 struct Parser<'a> {

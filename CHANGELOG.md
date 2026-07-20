@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-07-20 · « Correctif de revue »
+
+- Suppression du `.expect()` en code de bibliothèque : traitement explicite
+  du cas `None` avec `match` dans `eval_arithmetic`.
+- Correction de la coquille « inatendus » → « inattendus ».
+
 ## 0.2.1 — 2026-07-20 · « Correctifs de revue »
 
 - Nouvelle variante d'erreur `UnexpectedToken` pour distinguer les jetons
@@ -7,7 +13,7 @@
   d'expression incomplète (ex. `2+`).
 - `eval_arithmetic` signale les jetons excédentaires comme `UnexpectedToken`
   au lieu de `UnbalancedParen`.
-- `parse_atom` renvoie `UnexpectedToken` pour les jetons inatendus au lieu
+- `parse_atom` renvoie `UnexpectedToken` pour les jetons inattendus au lieu
   de la vague `UnexpectedEnd`.
 - Tests ajoutés : associativité gauche des opérateurs non commutatifs
   (soustraction, division, modulo) et les deux nouveaux cas d'erreur.
