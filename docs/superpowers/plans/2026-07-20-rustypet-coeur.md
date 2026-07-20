@@ -25,8 +25,10 @@
 ### Task 1: Squelette du workspace
 
 **Files:**
-- Create: `Cargo.toml`, `rust-toolchain.toml`, `.gitignore`, `CHANGELOG.md`, `README.md`
+- Create: `Cargo.toml`, `rust-toolchain.toml`, `.gitignore`, `CHANGELOG.md`
 - Create: `crates/pet-expr/Cargo.toml`, `crates/pet-expr/src/lib.rs`
+
+Note : le `README.md` est créé en tâche 9, quand il y a quelque chose à y décrire.
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
