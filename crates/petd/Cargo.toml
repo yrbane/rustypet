@@ -12,6 +12,7 @@ zbus = { workspace = true }
 tokio = { workspace = true }
 image.workspace = true
 clap.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 tempfile = "3"

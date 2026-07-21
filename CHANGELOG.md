@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 — 2026-07-21 · « Démon petd : pilote du moteur »
+
+- `Engine` : chargement d'un pet, apparition sur géométrie fournie.
+- Avance pas à pas convertie en `PetFrame` (opacité échelle Clutter).
+- Logique du démon entièrement testable sans D-Bus, déterministe.
+
 ## 0.10.1 — 2026-07-21 · « Correctifs de revue : cache_dir toujours absolu »
 
 - `cache_dir()` (crate `petd`) retournait un chemin **relatif** dans le cas
