@@ -60,20 +60,38 @@ gnome-extensions enable rustypet@yrbane.dev
 Puis **déconnectez et reconnectez votre session** : sous Wayland, GNOME ne
 recharge pas les extensions à chaud. Le pet apparaît alors sur le bureau.
 
-### Développement sans toucher à sa session
+### Développement
 
 ```bash
 ./scripts/dev-session.sh
 ```
 
-Ceci ouvre une session GNOME imbriquée (`gnome-shell --devkit --wayland`,
-GNOME 49+) dans une fenêtre. Dans le terminal de cette session :
+Ce script construit `petd`, installe l'extension, puis tente une session GNOME
+imbriquée via `gnome-shell --devkit --wayland` (le `--devkit` remplace l'ancien
+`--nested` depuis GNOME 49).
+
+La session imbriquée exige le binaire auxiliaire `/usr/lib/mutter-devkit`, que
+certaines distributions — dont Arch — n'empaquettent pas. Quand il est absent,
+le script le détecte et affiche la marche à suivre pour tester dans la session
+réelle (le mode `--headless` de mutter, lui, n'expose pas la couche UI du Shell
+hors d'une vraie session logind). Les journaux du Shell se lisent avec :
 
 ```bash
-gnome-extensions enable rustypet@yrbane.dev
+journalctl --user -f -o cat /usr/bin/gnome-shell
 ```
 
-Les journaux s'affichent dans le terminal qui a lancé le script.
+### Vérifier le démon sans compositeur
+
+Le démon se teste seul, sans GNOME : il émet la position et la tuile du pet sur
+D-Bus. Le test d'intégration lance `petd` sur un bus jetable et compte les
+signaux :
+
+```bash
+cargo build -p petd && ./crates/petd/tests/dbus_smoke.sh
+```
+
+Le spritesheet décodé (couleur-clé convertie en transparence) est écrit dans
+`~/.cache/rustypet/<pet>/sheet.png` — ouvrable directement pour contrôle.
 
 ### Ce qui marche à ce stade
 

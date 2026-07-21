@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.1 — 2026-07-21 · « Session de développement robuste »
+
+- `dev-session.sh` détecte l'absence de `/usr/lib/mutter-devkit` (non empaqueté
+  sur Arch) et bascule sur la voie de test en session réelle.
+- README : voie de test clarifiée, ajout du contrôle du démon sans compositeur.
+
 ## 0.15.0 — 2026-07-21 · « Rendu bout-en-bout sous GNOME »
 
 - Scripts d'installation de l'extension et de session de développement.
