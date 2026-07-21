@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0 — 2026-07-21 · « Démon petd : service D-Bus »
+
+- `petd` possède `dev.yrbane.RustyPet`, expose `Configure` et `GetSprite`.
+- Émission du signal `PetState` à la cadence des animations.
+- Test d'intégration D-Bus scriptable (dbus-run-session), sans GNOME.
+
 ## 0.11.0 — 2026-07-21 · « Démon petd : pilote du moteur »
 
 - `Engine` : chargement d'un pet, apparition sur géométrie fournie.
