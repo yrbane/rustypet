@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 — 2026-07-21 · « Rendu bout-en-bout sous GNOME »
+
+- Scripts d'installation de l'extension et de session de développement.
+- README : comment voir le pet à l'écran, en session réelle ou imbriquée.
+- Squelette de rendu complet : un pet animé, physique des bords d'écran.
+
 ## 0.14.1 — 2026-07-21 · « Correctif : acteur zombie sur disable() pendant la connexion »
 
 - `extension.js` : `_connect()` est asynchrone (un seul point d'`await`, sur

@@ -46,6 +46,41 @@ Valider le corpus complet du dépôt amont (22 pets) :
 RUSTYPET_CORPUS=~/Dev/desktopPet/Pets cargo test -p pet-format -- --ignored
 ```
 
+## Voir le pet à l'écran (GNOME Shell 50, Wayland)
+
+Le rendu passe par une extension GNOME Shell pilotée par le démon `petd`.
+
+### Installation
+
+```bash
+./scripts/install-extension.sh
+gnome-extensions enable rustypet@yrbane.dev
+```
+
+Puis **déconnectez et reconnectez votre session** : sous Wayland, GNOME ne
+recharge pas les extensions à chaud. Le pet apparaît alors sur le bureau.
+
+### Développement sans toucher à sa session
+
+```bash
+./scripts/dev-session.sh
+```
+
+Ceci ouvre une session GNOME imbriquée (`gnome-shell --devkit --wayland`,
+GNOME 49+) dans une fenêtre. Dans le terminal de cette session :
+
+```bash
+gnome-extensions enable rustypet@yrbane.dev
+```
+
+Les journaux s'affichent dans le terminal qui a lancé le script.
+
+### Ce qui marche à ce stade
+
+Un seul pet, la physique des bords d'écran (il marche, tombe, rebondit sur
+les bords et la barre des tâches). La marche sur les fenêtres, l'audio, le
+menu, le glisser-déposer et le multi-pets viennent dans les plans suivants.
+
 ## Documentation
 
 - Conception : `docs/superpowers/specs/2026-07-20-rustypet-design.md`
