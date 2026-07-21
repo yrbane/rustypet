@@ -20,6 +20,9 @@ export default class RustyPetExtension extends Extension {
         this._tileW = 0;
         this._tileH = 0;
         this._columns = 1;
+        // Drapeau de démontage : protège _connect() contre une reprise
+        // après un disable() survenu pendant son await.
+        this._destroyed = false;
 
         this._startDaemon();
         // Laisse au démon le temps de prendre le nom de bus, puis se connecte.
@@ -51,9 +54,19 @@ export default class RustyPetExtension extends Extension {
     }
 
     async _connect() {
-        this._proxy = await Gio.DBusProxy.new_for_bus(
+        // Ne pas assigner directement this._proxy ici : tant que le drapeau
+        // _destroyed n'a pas été vérifié après l'await, aucune ressource ne
+        // doit être conservée sur l'instance (sinon disable() ne peut pas la
+        // voir si elle s'exécute pendant la suspension).
+        const proxy = await Gio.DBusProxy.new_for_bus(
             Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, null,
             BUS_NAME, OBJECT_PATH, IFACE, null);
+
+        // L'extension a été désactivée pendant l'attente du proxy : on
+        // abandonne proprement sans rien créer (pas d'acteur zombie).
+        if (this._destroyed) return;
+
+        this._proxy = proxy;
 
         // Géométrie du moniteur primaire + zone de travail.
         const monitor = Main.layoutManager.primaryMonitor;
@@ -96,6 +109,10 @@ export default class RustyPetExtension extends Extension {
     }
 
     disable() {
+        // Marque l'extension comme démontée avant tout, afin qu'une
+        // _connect() en cours (suspendue sur son await) se sache obsolète
+        // dès qu'elle reprendra, et n'assigne ni proxy ni acteur.
+        this._destroyed = true;
         if (this._connectId) { GLib.source_remove(this._connectId); this._connectId = 0; }
         if (this._proxy && this._signalId) {
             this._proxy.disconnectSignal(this._signalId);

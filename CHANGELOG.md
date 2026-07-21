@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.1 — 2026-07-21 · « Correctif : acteur zombie sur disable() pendant la connexion »
+
+- `extension.js` : `_connect()` est asynchrone (un seul point d'`await`, sur
+  `Gio.DBusProxy.new_for_bus`) et lancée depuis un timeout GLib. Si
+  `disable()` s'exécutait pendant cette suspension, il ne trouvait ni proxy
+  ni acteur à nettoyer, puis `_connect()` reprenait après coup et créait
+  malgré tout le proxy, l'acteur `St.Widget` et l'abonnement au signal
+  `PetState` — ressources fantômes survivant au démontage, qu'un `enable()`
+  suivant ne pouvait plus détruire (référence écrasée).
+- Ajout du drapeau `this._destroyed` (posé par `disable()` avant tout autre
+  nettoyage) : `_connect()` le vérifie juste après son unique `await` et
+  abandonne sans rien assigner ni créer si l'extension a été démontée
+  entre-temps.
+- Comportement nominal inchangé : quand `disable()` n'intervient pas
+  pendant la connexion, le pet s'affiche normalement.
+
 ## 0.14.0 — 2026-07-21 · « Extension GNOME : affichage »
 
 - Extension GNOME Shell 50 (ESM) : lancement de petd, géométrie, rendu.
