@@ -587,7 +587,7 @@ dependencies = [
 
 [[package]]
 name = "pet-engine"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "pet-expr",
  "pet-format",
@@ -595,7 +595,7 @@ dependencies = [
 
 [[package]]
 name = "pet-expr"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "rand",
  "thiserror",
@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "pet-format"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "base64",
  "image",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "petd"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "clap",
  "image",
@@ -629,7 +629,7 @@ dependencies = [
 
 [[package]]
 name = "petsim"
-version = "0.12.0"
+version = "0.14.0"
 dependencies = [
  "clap",
  "insta",

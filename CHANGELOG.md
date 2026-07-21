@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0 — 2026-07-21 · « Extension GNOME : affichage »
+
+- Extension GNOME Shell 50 (ESM) : lancement de petd, géométrie, rendu.
+- Acteur St.Widget piloté par le signal PetState (position, tuile,
+  miroir, opacité).
+
 ## 0.13.0 — 2026-07-21 · « Extension : logique de tuile »
 
 - Module `petMath.js` : décalage de tuile, bornage d'opacité.
