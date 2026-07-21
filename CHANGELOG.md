@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0 — 2026-07-21 · « Extension : logique de tuile »
+
+- Module `petMath.js` : décalage de tuile, bornage d'opacité.
+- Testé hors GNOME via gjs-console (découpe en ligne d'abord).
+
 ## 0.12.0 — 2026-07-21 · « Démon petd : service D-Bus »
 
 - `petd` possède `dev.yrbane.RustyPet`, expose `Configure` et `GetSprite`.
