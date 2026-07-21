@@ -25,8 +25,10 @@
 ### Task 1: Squelette du workspace
 
 **Files:**
-- Create: `Cargo.toml`, `rust-toolchain.toml`, `.gitignore`, `CHANGELOG.md`, `README.md`
+- Create: `Cargo.toml`, `rust-toolchain.toml`, `.gitignore`, `CHANGELOG.md`
 - Create: `crates/pet-expr/Cargo.toml`, `crates/pet-expr/src/lib.rs`
+
+Note : le `README.md` est créé en tâche 9, quand il y a quelque chose à y décrire.
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
@@ -2405,7 +2407,7 @@ Bump `0.7.0`, entrée `CHANGELOG.md` :
     - `pub fn tick(&mut self, world: &World, rng: &mut dyn PetRng) -> TickOutcome`
     - `pub fn draw(&self) -> SpriteDraw`
     - `pub fn interval_ms(&self) -> i32`
-    - `pub fn begin_drag(&mut self, rng: &mut dyn PetRng)`, `pub fn drag_to(&mut self, x: i32, y: i32)`, `pub fn end_drag(&mut self, rng: &mut dyn PetRng)`
+    - `pub fn begin_drag(&mut self, world: &World, rng: &mut dyn PetRng)`, `pub fn drag_to(&mut self, x: i32, y: i32)`, `pub fn end_drag(&mut self, world: &World, rng: &mut dyn PetRng)`
     - `pub fn pending_children(&mut self) -> Vec<i32>` — identifiants d'animation dont les enfants restent à créer
 
 **Contexte critique (§4.2) — ordre des opérations dans `tick` :**
@@ -2571,7 +2573,7 @@ mod tests {
     fn le_drag_suspend_la_physique() {
         let (mut pet, world, mut rng) = make_pet();
         pet.spawn(&world, &mut rng);
-        pet.begin_drag(&mut rng);
+        pet.begin_drag(&world, &mut rng);
         pet.drag_to(400, 300);
         pet.tick(&world, &mut rng);
         // La position reste celle du curseur, à l'ancrage près.
@@ -2857,11 +2859,10 @@ impl Pet {
     }
 
     /// Le pet est attrapé à la souris.
-    pub fn begin_drag(&mut self, rng: &mut dyn PetRng) {
+    pub fn begin_drag(&mut self, world: &World, rng: &mut dyn PetRng) {
         self.dragging = true;
         if let Some(id) = self.definition.animation_id_by_name("drag") {
-            let world = World::simple(self.ctx.screen_w, self.ctx.screen_h);
-            self.set_animation(id, &world, rng);
+            self.set_animation(id, world, rng);
         }
     }
 
@@ -2872,11 +2873,10 @@ impl Pet {
     }
 
     /// Le pet est relâché : il tombe.
-    pub fn end_drag(&mut self, rng: &mut dyn PetRng) {
+    pub fn end_drag(&mut self, world: &World, rng: &mut dyn PetRng) {
         self.dragging = false;
         if let Some(id) = self.definition.animation_id_by_name("fall") {
-            let world = World::simple(self.ctx.screen_w, self.ctx.screen_h);
-            self.set_animation(id, &world, rng);
+            self.set_animation(id, world, rng);
         }
     }
 

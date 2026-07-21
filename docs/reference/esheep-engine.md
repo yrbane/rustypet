@@ -196,9 +196,16 @@ Trois points d'entrée :
 si step < frames.len() :
     frame = frames[step]
 sinon :
-    idx = ((step - frames.len() + repeat_from) % (frames.len() - repeat_from)) + repeat_from
+    span = frames.len() - repeat_from
+    idx = ((step - frames.len()) % span) + repeat_from
     frame = frames[idx]
 ```
+
+Note (corrigé en tâche 6) : une transcription antérieure injectait `repeat_from`
+deux fois — avant et après le modulo — ce qui décalait la répétition d'un cran.
+Le C# d'origine ne l'injecte qu'une fois, en sortie. Exemple frames `[10,11,12]`,
+`repeat_from=1` : les pas 3,4,5,6 donnent `11,12,11,12` (la sous-séquence
+`[11,12]` rejouée), et non `12,11,12,11`.
 
 ### 2.6 Animations « clé » par nom
 
