@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0 — 2026-07-21 · « Démon petd : cache du spritesheet »
+
+- Nouveau crate `petd` (démon).
+- Écriture du spritesheet décodé en PNG dans le cache utilisateur (XDG).
+- Slugification sûre du nom de pet pour le chemin de cache.
+
 ## 0.9.2 — 2026-07-20 · « Retouches de revue »
 
 - Factorisation du tirage pondéré cumulatif de `pick_next` et `pick_spawn`

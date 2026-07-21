@@ -1,9 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["crates/pet-expr", "crates/pet-format", "crates/pet-engine", "crates/petsim"]
+members = ["crates/pet-expr", "crates/pet-format", "crates/pet-engine", "crates/petsim", "crates/petd"]
 
 [workspace.package]
-version = "0.9.2"
+version = "0.10.0"
 edition = "2024"
 rust-version = "1.97"
 license = "MIT"
@@ -17,3 +17,5 @@ base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
 clap = { version = "4", features = ["derive"] }
 insta = "1"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
