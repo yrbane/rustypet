@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.1 — 2026-07-21 · « Correctifs de revue : cache_dir toujours absolu »
+
+- `cache_dir()` (crate `petd`) retournait un chemin **relatif** dans le cas
+  limite où ni `XDG_CACHE_HOME` (absolu) ni `HOME` n'étaient exploitables :
+  repli désormais garanti absolu sur `std::env::temp_dir()`. Un démon
+  n'écrit ainsi jamais à un chemin dépendant de son répertoire courant.
+- Test `cache_dir_respecte_xdg` renforcé : vérifie désormais la valeur
+  exacte du chemin produit (et son caractère absolu), pas seulement le nom
+  du dernier composant.
+- Nouveau test `cache_dir_reste_absolu_sans_home_ni_xdg` couvrant la
+  régression ci-dessus (ni `HOME` ni `XDG_CACHE_HOME` dans l'environnement).
+- Les tests manipulant `XDG_CACHE_HOME`/`HOME` restaurent désormais l'état
+  d'origine de l'environnement via une garde RAII (`EnvVarGuard`), pour ne
+  pas polluer les autres tests du binaire ; tous portent `#[serial]`.
+
 ## 0.10.0 — 2026-07-21 · « Démon petd : cache du spritesheet »
 
 - Nouveau crate `petd` (démon).
