@@ -89,6 +89,11 @@ impl Engine {
         self.pet = Some(pet);
     }
 
+    /// Met à jour les fenêtres sur lesquelles le pet peut marcher.
+    pub fn set_windows(&mut self, windows: Vec<Rect>) {
+        self.world.windows = windows;
+    }
+
     /// Avance d'un pas et retourne l'image à afficher. Réapparition gérée.
     pub fn advance(&mut self) -> PetFrame {
         let Some(pet) = self.pet.as_mut() else {

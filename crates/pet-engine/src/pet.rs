@@ -2,7 +2,7 @@
 //! Voir `docs/reference/esheep-engine.md` §4.
 
 use crate::anim_state::{interpolate, pick_frame, total_steps};
-use crate::geometry::World;
+use crate::geometry::{Rect, World};
 use crate::transitions::{pick_next, pick_spawn};
 use pet_expr::{EvalContext, PetRng};
 use pet_format::{OnlyFlags, PetDefinition};
@@ -56,6 +56,10 @@ pub struct Pet {
     drag_x: i32,
     drag_y: i32,
 
+    /// Fenêtre dont le pet arpente le toit (§4.3, §4.5). `None` = au sol
+    /// ou en l'air ; les bords suivis sont alors ceux de l'écran.
+    on_window: Option<Rect>,
+
     /// Vrai pour un enfant : il se ferme au lieu de réapparaître.
     is_child: bool,
     /// Animations dont les enfants restent à créer.
@@ -100,6 +104,7 @@ impl Pet {
             dragging: false,
             drag_x: 0,
             drag_y: 0,
+            on_window: None,
             is_child: false,
             pending_children: Vec::new(),
             cache: None,
@@ -109,6 +114,11 @@ impl Pet {
     /// Marque ce pet comme enfant : il se ferme au lieu de réapparaître.
     pub fn set_child(&mut self, is_child: bool) {
         self.is_child = is_child;
+    }
+
+    /// Identifiant de l'animation en cours.
+    pub fn animation_id(&self) -> i32 {
+        self.animation_id
     }
 
     /// Position courante, coin haut-gauche.
@@ -182,6 +192,7 @@ impl Pet {
         self.position_y = world.bounds.y + y;
         self.offset_y = 0;
         self.opacity = 1.0;
+        self.on_window = None;
 
         self.set_animation(next, world, rng);
     }
@@ -288,7 +299,30 @@ impl Pet {
         // sinon il continuerait à l'infini dans le vide.
         let mut next_animation: Option<i32> = None;
 
-        if dx < 0 && self.position_x + dx < world.area.x {
+        if let Some(rect) = self.on_window {
+            // Sur une fenêtre, les bords suivis sont ceux de la fenêtre
+            // (§4.3). Sans transition éligible, le pet quitte simplement le
+            // toit et la gravité fera le reste.
+            if dx < 0 && self.position_x + dx < rect.x {
+                match pick_next(&animation.border, OnlyFlags::WINDOW, rng) {
+                    Some(id) => {
+                        self.position_x = rect.x;
+                        dx = 0;
+                        next_animation = Some(id);
+                    }
+                    None => self.on_window = None,
+                }
+            } else if dx > 0 && self.position_x + dx + self.tile_w > rect.right() {
+                match pick_next(&animation.border, OnlyFlags::WINDOW, rng) {
+                    Some(id) => {
+                        self.position_x = rect.right() - self.tile_w;
+                        dx = 0;
+                        next_animation = Some(id);
+                    }
+                    None => self.on_window = None,
+                }
+            }
+        } else if dx < 0 && self.position_x + dx < world.area.x {
             match pick_next(&animation.border, OnlyFlags::VERTICAL, rng) {
                 Some(id) => {
                     self.position_x = world.area.x;
@@ -306,6 +340,20 @@ impl Pet {
                 }
                 None => return self.offscreen_outcome(),
             }
+        }
+
+        // Atterrissage sur le toit d'une fenêtre pendant une descente (§4.5).
+        // Sans transition `only="window"` éligible, le pet traverse.
+        if next_animation.is_none()
+            && dy > 0
+            && let Some(rect) = self.landing_window(world, dy)
+            && let Some(id) = pick_next(&animation.border, OnlyFlags::WINDOW, rng)
+        {
+            self.position_y = rect.y - self.tile_h;
+            self.offset_y = 0;
+            dy = 0;
+            self.on_window = Some(rect);
+            next_animation = Some(id);
         }
 
         let floor = world.area.bottom() - self.tile_h;
@@ -332,16 +380,28 @@ impl Pet {
             }
         }
 
-        // TODO(plan 2) : atterrissage sur les fenêtres de `world.windows`,
-        // avec le contexte OnlyFlags::WINDOW.
-
-        // 5. Gravité : le pet tombe s'il n'est pas au sol (§4.4).
-        if next_animation.is_none() && animation.has_gravity() && self.position_y + dy < floor {
-            // Tolérance de 3 px : on colle au sol plutôt que de déclencher une chute.
-            if self.position_y + dy + 3 >= floor {
-                dy = floor - self.position_y;
-            } else if let Some(id) = pick_next(&animation.gravity, OnlyFlags::NONE, rng) {
-                next_animation = Some(id);
+        // 5. Gravité : le pet tombe s'il n'est porté ni par le sol ni par une
+        // fenêtre (§4.4).
+        if next_animation.is_none() && animation.has_gravity() {
+            if self.on_window.is_some() {
+                // La fenêtre est-elle toujours là, toujours sous les pieds ?
+                // Elle a pu bouger : on suit son rectangle actuel.
+                match self.window_under_feet(world) {
+                    Some(rect) => self.on_window = Some(rect),
+                    None => {
+                        self.on_window = None;
+                        if let Some(id) = pick_next(&animation.gravity, OnlyFlags::WINDOW, rng) {
+                            next_animation = Some(id);
+                        }
+                    }
+                }
+            } else if self.position_y + dy < floor {
+                // Tolérance de 3 px : on colle au sol plutôt que de déclencher une chute.
+                if self.position_y + dy + 3 >= floor {
+                    dy = floor - self.position_y;
+                } else if let Some(id) = pick_next(&animation.gravity, OnlyFlags::NONE, rng) {
+                    next_animation = Some(id);
+                }
             }
         }
 
@@ -375,6 +435,38 @@ impl Pet {
         }
 
         outcome
+    }
+
+    /// La fenêtre que le pet, en descente, atteindrait pendant ce pas (§4.5) :
+    /// pieds au-dessus du toit avant le pas, dessous après, avec une tolérance
+    /// latérale d'une demi-tuile, et pas trop haut sur l'écran.
+    fn landing_window(&self, world: &World, dy: i32) -> Option<Rect> {
+        let feet = self.position_y + self.tile_h;
+        world
+            .windows
+            .iter()
+            .find(|w| {
+                feet < w.y
+                    && feet + dy >= w.y
+                    && self.position_x >= w.x - self.tile_w / 2
+                    && self.position_x + self.tile_w <= w.right() + self.tile_w / 2
+                    && self.position_y > world.area.y + 20
+            })
+            .copied()
+    }
+
+    /// La fenêtre encore présente sous les pieds du pet, s'il y en a une.
+    fn window_under_feet(&self, world: &World) -> Option<Rect> {
+        let feet = self.position_y + self.tile_h;
+        world
+            .windows
+            .iter()
+            .find(|w| {
+                (feet - w.y).abs() <= 3
+                    && self.position_x + self.tile_w > w.x - self.tile_w / 2
+                    && self.position_x < w.right() + self.tile_w / 2
+            })
+            .copied()
     }
 
     /// Issue d'un pet qui franchit un bord sans transition éligible.
@@ -552,6 +644,100 @@ mod tests {
         assert!(
             respawned,
             "le bord sans transition doit provoquer un respawn"
+        );
+    }
+
+    /// Un pet « façon mouton » : il marche (avec gravité) et sait tomber.
+    /// La chute (`fall`) atterrit sur une fenêtre (`only="window"`) ou sur la
+    /// barre des tâches ; la marche ne connaît que les bords d'écran
+    /// (`only="vertical"`), donc au bord d'une fenêtre elle quitte le toit.
+    const XML_FENETRES: &str = r#"
+    <animations>
+      <header><author>a</author><title>t</title><petname>p</petname>
+        <version>1</version><info>i</info><application>1</application><icon>x</icon></header>
+      <image><tilesx>2</tilesx><tilesy>1</tilesy><png>AAAA</png></image>
+      <spawns><spawn id="1" probability="100"><x>150</x><y>100</y><next>2</next></spawn></spawns>
+      <animations>
+        <animation id="1">
+          <name>walk</name>
+          <start><x>5</x><y>0</y><interval>100</interval></start>
+          <sequence repeat="10" repeatfrom="0"><frame>0</frame><frame>1</frame>
+            <next probability="100">1</next></sequence>
+          <border><next probability="100" only="vertical">1</next></border>
+          <gravity><next probability="100" only="window">2</next>
+            <next probability="100">2</next></gravity>
+        </animation>
+        <animation id="2">
+          <name>fall</name>
+          <start><x>0</x><y>8</y><interval>100</interval></start>
+          <sequence repeat="0" repeatfrom="0"><frame>0</frame><frame>1</frame>
+            <next probability="100">2</next></sequence>
+          <border><next probability="100" only="window">1</next>
+            <next probability="100" only="taskbar">1</next></border>
+        </animation>
+      </animations>
+      <childs/>
+    </animations>"#;
+
+    /// Monde 800×600 avec une fenêtre dont le toit est à y = 300.
+    fn make_pet_fenetres() -> (Pet, World, SeededRng) {
+        let def = Arc::new(parse_pet(XML_FENETRES).expect("parsing"));
+        let mut world = World::simple(800, 600);
+        world
+            .windows
+            .push(crate::geometry::Rect::new(100, 300, 300, 200));
+        let pet = Pet::new(def, (32, 32), &world);
+        (pet, world, SeededRng::new(7))
+    }
+
+    #[test]
+    fn le_pet_atterrit_sur_le_toit_d_une_fenetre() {
+        let (mut pet, world, mut rng) = make_pet_fenetres();
+        pet.spawn(&world, &mut rng); // (150, 100), en chute
+        for _ in 0..40 {
+            pet.tick(&world, &mut rng);
+        }
+        let (_, y) = pet.position();
+        assert_eq!(
+            y,
+            300 - 32,
+            "le pet doit se poser sur le toit de la fenêtre, pas au sol"
+        );
+    }
+
+    #[test]
+    fn le_pet_tombe_du_bord_de_la_fenetre_et_atteint_le_sol() {
+        let (mut pet, world, mut rng) = make_pet_fenetres();
+        pet.spawn(&world, &mut rng);
+        for _ in 0..200 {
+            pet.tick(&world, &mut rng);
+        }
+        // Largement le temps d'atterrir, de traverser le toit à 5 px/pas,
+        // puis de chuter jusqu'au sol.
+        let (_, y) = pet.position();
+        assert_eq!(
+            y,
+            600 - 32,
+            "après le bord du toit, le pet doit finir au sol"
+        );
+    }
+
+    #[test]
+    fn le_pet_chute_quand_la_fenetre_disparait_sous_lui() {
+        let (mut pet, mut world, mut rng) = make_pet_fenetres();
+        pet.spawn(&world, &mut rng);
+        for _ in 0..40 {
+            pet.tick(&world, &mut rng);
+        }
+        assert_eq!(pet.position().1, 268, "prérequis : le pet est sur le toit");
+        world.windows.clear();
+        for _ in 0..80 {
+            pet.tick(&world, &mut rng);
+        }
+        assert_eq!(
+            pet.position().1,
+            600 - 32,
+            "fenêtre fermée : le pet doit retomber au sol"
         );
     }
 

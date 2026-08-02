@@ -101,11 +101,24 @@ cargo build -p petd && ./crates/petd/tests/dbus_smoke.sh
 Le spritesheet décodé (couleur-clé convertie en transparence) est écrit dans
 `~/.cache/rustypet/<pet>/sheet.png` — ouvrable directement pour contrôle.
 
+### Choisir son pet
+
+Par défaut, le neko. Pour un autre pet du corpus (le mouton, par exemple) :
+
+```bash
+mkdir -p ~/.config/rustypet
+echo ~/Dev/desktopPet/Pets/esheep64/animations.xml > ~/.config/rustypet/pet
+```
+
+Puis déconnexion/reconnexion de session. Supprimer le fichier revient au neko.
+
 ### Ce qui marche à ce stade
 
-Un seul pet, la physique des bords d'écran (il marche, tombe, rebondit sur
-les bords et la barre des tâches). La marche sur les fenêtres, l'audio, le
-menu, le glisser-déposer et le multi-pets viennent dans les plans suivants.
+Un seul pet, la physique des bords d'écran (il marche, tombe, rebondit sur les
+bords et la barre des tâches) **et la marche sur les fenêtres** : le pet
+atterrit sur les toits, les arpente, et chute quand la fenêtre se ferme ou
+bouge. L'audio, le menu, le glisser-déposer et le multi-pets viennent dans les
+plans suivants.
 
 ## Documentation
 

@@ -20,3 +20,23 @@ export function clutterOpacity(opacity255) {
     if (v > 255) return 255;
     return v;
 }
+
+/**
+ * Vrai si deux listes de rectangles de fenêtres [x, y, largeur, hauteur]
+ * diffèrent. `previous` peut être null (rien encore envoyé : toujours vrai).
+ */
+export function windowRectsChanged(previous, current) {
+    if (previous === null || previous === undefined) return true;
+    if (previous.length !== current.length) return true;
+    return previous.some((rect, i) => rect.some((v, j) => v !== current[i][j]));
+}
+
+/**
+ * Chemin du pet à charger : celui de la config s'il désigne un fichier
+ * existant (`exists` est injecté pour rester testable), sinon le repli.
+ */
+export function chosenPetPath(configText, fallback, exists) {
+    const path = (configText ?? '').trim();
+    if (path !== '' && exists(path)) return path;
+    return fallback;
+}

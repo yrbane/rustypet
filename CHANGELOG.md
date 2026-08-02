@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.0 — 2026-08-02 · « Marche sur les fenêtres et choix du pet »
+
+Le pet fait enfin ses trucs de mouton : il tombe du haut de l'écran, atterrit
+sur le toit des fenêtres, les arpente, en tombe, et réagit quand elles bougent.
+
+- Moteur : atterrissage sur le toit d'une fenêtre pendant une descente
+  (sémantique `FallDetect` du moteur d'origine §4.5 : franchissement du bord
+  haut, tolérance latérale d'une demi-tuile), suivi des bords de la fenêtre
+  (contexte `only="window"`) au lieu des bords d'écran, et chute quand la
+  fenêtre disparaît ou bouge sous le pet. TDD : trois nouveaux tests.
+- petd : méthode D-Bus `UpdateWindows(a(iiii))` qui alimente `World::windows` ;
+  couverte par le smoke test D-Bus.
+- Extension : remontée des fenêtres visibles (type NORMAL, non minimisées)
+  toutes les 500 ms, seulement quand la géométrie change ; une fenêtre plein
+  écran neutralise la marche, comme l'original.
+- Choix du pet : `~/.config/rustypet/pet` contient le chemin d'un
+  `animations.xml` ; repli sur le neko si absent. Le mouton `esheep64` (et les
+  27 autres pets du corpus) devient utilisable.
+- petsim : option répétable `--window x,y,l,h` pour simuler des fenêtres, et
+  colonne `anim=` dans la trace.
+
 ## 0.15.2 — 2026-08-02 · « Le pet s'anime enfin à l'écran »
 
 Trois causes racines distinctes empêchaient tout rendu correct :

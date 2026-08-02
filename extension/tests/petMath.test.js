@@ -1,7 +1,9 @@
 // Test autonome, lancé par gjs-console (pas besoin de GNOME Shell).
 // Sortie : « OK » et code 0 si tout passe ; sinon lève et code non nul.
 
-import { tileBackgroundPosition, clutterOpacity } from '../petMath.js';
+import {
+    tileBackgroundPosition, clutterOpacity, windowRectsChanged, chosenPetPath,
+} from '../petMath.js';
 
 function assertEq(actual, expected, label) {
     const a = JSON.stringify(actual);
@@ -23,5 +25,24 @@ assertEq(tileBackgroundPosition(3, 10, 10, 0), { x: 0, y: -30 }, 'columns=0');
 assertEq(clutterOpacity(300), 255, 'opacité haute');
 assertEq(clutterOpacity(-5), 0, 'opacité basse');
 assertEq(clutterOpacity(128), 128, 'opacité milieu');
+
+// Détection de changement des rectangles de fenêtres [x, y, l, h].
+assertEq(windowRectsChanged([], []), false, 'vide = inchangé');
+assertEq(windowRectsChanged([[0, 0, 10, 10]], [[0, 0, 10, 10]]), false, 'identiques');
+assertEq(windowRectsChanged([[0, 0, 10, 10]], [[0, 1, 10, 10]]), true, 'déplacement');
+assertEq(windowRectsChanged([[0, 0, 10, 10]], []), true, 'fenêtre fermée');
+assertEq(windowRectsChanged([], [[0, 0, 10, 10]]), true, 'fenêtre ouverte');
+assertEq(windowRectsChanged(null, [[1, 2, 3, 4]]), true, 'premier envoi');
+
+// Choix du pet : la config l'emporte si le fichier existe, sinon repli.
+const existant = p => p === '/pets/mouton.xml';
+assertEq(chosenPetPath('/pets/mouton.xml\n', '/defaut/neko.xml', existant),
+    '/pets/mouton.xml', 'config valide');
+assertEq(chosenPetPath('/pets/disparu.xml', '/defaut/neko.xml', existant),
+    '/defaut/neko.xml', 'config vers fichier absent');
+assertEq(chosenPetPath('', '/defaut/neko.xml', existant),
+    '/defaut/neko.xml', 'config vide');
+assertEq(chosenPetPath(null, '/defaut/neko.xml', existant),
+    '/defaut/neko.xml', 'pas de config');
 
 print('OK');

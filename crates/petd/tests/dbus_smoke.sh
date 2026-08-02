@@ -35,6 +35,10 @@ run() {
   busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
     dev.yrbane.RustyPet1 GetSprite
 
+  # Remonte deux fenêtres factices : le pet peut marcher dessus.
+  busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
+    dev.yrbane.RustyPet1 UpdateWindows "a(iiii)" 2 200 400 600 500 1000 600 700 400
+
   sleep 2
   kill "$monpid" 2>/dev/null || true
   kill "$pid" 2>/dev/null || true

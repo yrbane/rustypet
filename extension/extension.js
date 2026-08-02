@@ -2,11 +2,14 @@ import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GdkPixbuf from 'gi://GdkPixbuf';
+import Meta from 'gi://Meta';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import { tileBackgroundPosition, clutterOpacity } from './petMath.js';
+import {
+    tileBackgroundPosition, clutterOpacity, windowRectsChanged, chosenPetPath,
+} from './petMath.js';
 
 // new_for_bus est une fonction async C (callback en dernier argument) :
 // la promisification est indispensable pour pouvoir l'await-er.
@@ -26,6 +29,8 @@ export default class RustyPetExtension extends Extension {
         this._tileW = 0;
         this._tileH = 0;
         this._columns = 1;
+        this._windowsId = 0;
+        this._lastWindows = null;
         // Drapeau de démontage : protège _connect() contre une reprise
         // après un disable() survenu pendant son await.
         this._destroyed = false;
@@ -47,9 +52,26 @@ export default class RustyPetExtension extends Extension {
             [GLib.get_home_dir(), 'Dev', 'rustypet', 'target', 'debug', 'petd']);
     }
 
-    _startDaemon() {
-        const petXml = GLib.build_filenamev(
+    // Pet à charger : le chemin écrit dans ~/.config/rustypet/pet s'il
+    // désigne un animations.xml existant, sinon le neko par défaut.
+    _petXmlPath() {
+        const fallback = GLib.build_filenamev(
             [GLib.get_home_dir(), 'Dev', 'desktopPet', 'Pets', 'neko', 'animations.xml']);
+        const config = GLib.build_filenamev(
+            [GLib.get_user_config_dir(), 'rustypet', 'pet']);
+        let text = null;
+        try {
+            const [ok, bytes] = GLib.file_get_contents(config);
+            if (ok) text = new TextDecoder().decode(bytes);
+        } catch {
+            // Pas de config : pet par défaut.
+        }
+        return chosenPetPath(text, fallback,
+            p => GLib.file_test(p, GLib.FileTest.EXISTS));
+    }
+
+    _startDaemon() {
+        const petXml = this._petXmlPath();
         try {
             this._subprocess = Gio.Subprocess.new(
                 [this._daemonPath(), petXml],
@@ -113,6 +135,46 @@ export default class RustyPetExtension extends Extension {
         this._signalId = this._proxy.connect('g-signal', (_p, _sender, name, params) => {
             if (name === 'PetState') this._onState(params.deepUnpack());
         });
+
+        // Remonte la géométrie des fenêtres : le pet marche sur leurs toits.
+        this._windowsId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            this._pushWindows();
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    // Fenêtres visibles [x, y, largeur, hauteur] du bureau courant. Une
+    // fenêtre plein écran neutralise la marche (liste vide), comme l'original.
+    _collectWindows() {
+        const rects = [];
+        for (const actor of global.get_window_actors()) {
+            const win = actor.meta_window;
+            if (!win || win.minimized) continue;
+            if (win.get_window_type() !== Meta.WindowType.NORMAL) continue;
+            if (win.is_fullscreen()) return [];
+            const r = win.get_frame_rect();
+            rects.push([r.x, r.y, r.width, r.height]);
+        }
+        return rects;
+    }
+
+    // Envoie les fenêtres au démon, seulement quand elles ont changé.
+    _pushWindows() {
+        if (!this._proxy) return;
+        const rects = this._collectWindows();
+        if (!windowRectsChanged(this._lastWindows, rects)) return;
+        this._lastWindows = rects;
+        this._proxy.call(
+            'UpdateWindows',
+            new GLib.Variant('(a(iiii))', [rects]),
+            Gio.DBusCallFlags.NONE, -1, null,
+            (proxy, res) => {
+                try {
+                    proxy.call_finish(res);
+                } catch (e) {
+                    logError(e, 'RustyPet: UpdateWindows');
+                }
+            });
     }
 
     _onState(args) {
@@ -131,6 +193,8 @@ export default class RustyPetExtension extends Extension {
         // dès qu'elle reprendra, et n'assigne ni proxy ni acteur.
         this._destroyed = true;
         if (this._connectId) { GLib.source_remove(this._connectId); this._connectId = 0; }
+        if (this._windowsId) { GLib.source_remove(this._windowsId); this._windowsId = 0; }
+        this._lastWindows = null;
         if (this._proxy && this._signalId) {
             this._proxy.disconnect(this._signalId);
             this._signalId = 0;

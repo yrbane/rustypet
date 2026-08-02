@@ -32,6 +32,18 @@ impl PetService {
         );
     }
 
+    /// L'extension remonte les fenêtres visibles (x, y, largeur, hauteur) ;
+    /// le pet peut atterrir dessus et arpenter leur toit.
+    async fn update_windows(&self, windows: Vec<(i32, i32, i32, i32)>) {
+        use pet_engine::Rect;
+        let rects = windows
+            .iter()
+            .map(|&(x, y, w, h)| Rect::new(x, y, w, h))
+            .collect();
+        let mut engine = self.engine.lock().await;
+        engine.set_windows(rects);
+    }
+
     /// Renseigne l'extension sur le PNG à charger et sa grille de tuiles.
     async fn get_sprite(&self) -> (String, u32, u32, u32) {
         let engine = self.engine.lock().await;
