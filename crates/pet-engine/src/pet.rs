@@ -282,40 +282,53 @@ impl Pet {
             dx = -dx;
         }
 
-        // 4. Détections de bord, dans l'ordre du moteur d'origine.
+        // 4. Détections de bord, dans l'ordre du moteur d'origine. Un bord
+        // franchi sans transition éligible signifie « hors écran » : la spec
+        // impose alors le respawn du pet principal (fermeture pour un enfant),
+        // sinon il continuerait à l'infini dans le vide.
         let mut next_animation: Option<i32> = None;
 
         if dx < 0 && self.position_x + dx < world.area.x {
-            if let Some(id) = pick_next(&animation.border, OnlyFlags::VERTICAL, rng) {
-                self.position_x = world.area.x;
-                dx = 0;
-                next_animation = Some(id);
+            match pick_next(&animation.border, OnlyFlags::VERTICAL, rng) {
+                Some(id) => {
+                    self.position_x = world.area.x;
+                    dx = 0;
+                    next_animation = Some(id);
+                }
+                None => return self.offscreen_outcome(),
             }
-        } else if dx > 0
-            && self.position_x + dx + self.tile_w > world.area.right()
-            && let Some(id) = pick_next(&animation.border, OnlyFlags::VERTICAL, rng)
-        {
-            self.position_x = world.area.right() - self.tile_w;
-            dx = 0;
-            next_animation = Some(id);
+        } else if dx > 0 && self.position_x + dx + self.tile_w > world.area.right() {
+            match pick_next(&animation.border, OnlyFlags::VERTICAL, rng) {
+                Some(id) => {
+                    self.position_x = world.area.right() - self.tile_w;
+                    dx = 0;
+                    next_animation = Some(id);
+                }
+                None => return self.offscreen_outcome(),
+            }
         }
 
         let floor = world.area.bottom() - self.tile_h;
         if next_animation.is_none() {
             if dy > 0 && self.position_y + dy > floor {
-                if let Some(id) = pick_next(&animation.border, OnlyFlags::TASKBAR, rng) {
-                    self.position_y = floor;
-                    self.offset_y = 0;
-                    dy = 0;
-                    next_animation = Some(id);
+                match pick_next(&animation.border, OnlyFlags::TASKBAR, rng) {
+                    Some(id) => {
+                        self.position_y = floor;
+                        self.offset_y = 0;
+                        dy = 0;
+                        next_animation = Some(id);
+                    }
+                    None => return self.offscreen_outcome(),
                 }
-            } else if dy < 0
-                && self.position_y + dy < world.area.y
-                && let Some(id) = pick_next(&animation.border, OnlyFlags::HORIZONTAL, rng)
-            {
-                self.position_y = world.area.y;
-                dy = 0;
-                next_animation = Some(id);
+            } else if dy < 0 && self.position_y + dy < world.area.y {
+                match pick_next(&animation.border, OnlyFlags::HORIZONTAL, rng) {
+                    Some(id) => {
+                        self.position_y = world.area.y;
+                        dy = 0;
+                        next_animation = Some(id);
+                    }
+                    None => return self.offscreen_outcome(),
+                }
             }
         }
 
@@ -362,6 +375,15 @@ impl Pet {
         }
 
         outcome
+    }
+
+    /// Issue d'un pet qui franchit un bord sans transition éligible.
+    fn offscreen_outcome(&self) -> TickOutcome {
+        if self.is_child {
+            TickOutcome::Close
+        } else {
+            TickOutcome::Respawn
+        }
     }
 }
 
@@ -486,6 +508,51 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(trace(1234), trace(1234));
+    }
+
+    /// Même pet mais sans transition `<border>` : le cas des animations de
+    /// marche du neko réel, qui sortaient de l'écran à l'infini.
+    const XML_SANS_BORDER: &str = r#"
+    <animations>
+      <header><author>a</author><title>t</title><petname>p</petname>
+        <version>1</version><info>i</info><application>1</application><icon>x</icon></header>
+      <image><tilesx>2</tilesx><tilesy>1</tilesy><png>AAAA</png></image>
+      <spawns><spawn id="1" probability="100"><x>100</x><y>200</y><next>1</next></spawn></spawns>
+      <animations>
+        <animation id="1">
+          <name>walk</name>
+          <start><x>5</x><y>0</y><interval>100</interval></start>
+          <sequence repeat="0" repeatfrom="0"><frame>0</frame><frame>1</frame>
+            <next probability="100">1</next></sequence>
+        </animation>
+      </animations>
+      <childs/>
+    </animations>"#;
+
+    #[test]
+    fn sans_transition_de_bord_le_pet_respawne_au_lieu_de_sortir() {
+        let def = Arc::new(parse_pet(XML_SANS_BORDER).expect("parsing"));
+        let world = World::simple(800, 600);
+        let mut pet = Pet::new(def, (32, 32), &world);
+        let mut rng = SeededRng::new(7);
+        pet.spawn(&world, &mut rng);
+        // Marche vers la gauche (cf. le_pet_ne_sort_pas_par_la_gauche).
+        pet.set_flipped(true);
+        pet.set_position(2, 200);
+
+        let mut respawned = false;
+        for step in 0..50 {
+            if pet.tick(&world, &mut rng) == TickOutcome::Respawn {
+                respawned = true;
+                pet.spawn(&world, &mut rng);
+            }
+            let (x, _) = pet.position();
+            assert!(x >= world.area.x, "sorti à gauche au pas {step} : x = {x}");
+        }
+        assert!(
+            respawned,
+            "le bord sans transition doit provoquer un respawn"
+        );
     }
 
     #[test]

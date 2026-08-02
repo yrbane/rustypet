@@ -57,6 +57,14 @@ Le rendu passe par une extension GNOME Shell pilotée par le démon `petd`.
 gnome-extensions enable rustypet@yrbane.dev
 ```
 
+Les binaires peuvent aussi s'installer via cargo — le manifeste du workspace
+est virtuel, il faut cibler chaque crate (`cargo install --path .` échoue) :
+
+```bash
+cargo install --path crates/petd --locked     # démon D-Bus
+cargo install --path crates/petsim --locked   # simulateur headless
+```
+
 Puis **déconnectez et reconnectez votre session** : sous Wayland, GNOME ne
 recharge pas les extensions à chaud. Le pet apparaît alors sur le bureau.
 

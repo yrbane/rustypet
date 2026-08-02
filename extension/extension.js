@@ -1,11 +1,16 @@
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GdkPixbuf from 'gi://GdkPixbuf';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { tileBackgroundPosition, clutterOpacity } from './petMath.js';
+
+// new_for_bus est une fonction async C (callback en dernier argument) :
+// la promisification est indispensable pour pouvoir l'await-er.
+Gio._promisify(Gio.DBusProxy, 'new_for_bus', 'new_for_bus_finish');
 
 const BUS_NAME = 'dev.yrbane.RustyPet';
 const OBJECT_PATH = '/dev/yrbane/RustyPet';
@@ -14,6 +19,7 @@ const IFACE = 'dev.yrbane.RustyPet1';
 export default class RustyPetExtension extends Extension {
     enable() {
         this._actor = null;
+        this._sheet = null;
         this._proxy = null;
         this._signalId = 0;
         this._subprocess = null;
@@ -86,23 +92,34 @@ export default class RustyPetExtension extends Extension {
         this._columns = columns;
 
         const uri = GLib.filename_to_uri(sheetPath, null);
-        this._actor = new St.Widget({ reactive: false, width: tileW, height: tileH });
+        // St ne supporte pas background-position : on clippe un conteneur à la
+        // taille d'une tuile et on déplace la planche entière à l'intérieur.
+        // Dimensions naturelles de la planche lues dans l'en-tête du PNG.
+        const [, sheetW, sheetH] = GdkPixbuf.Pixbuf.get_file_info(sheetPath);
+        this._actor = new St.Widget({
+            reactive: false, width: tileW, height: tileH,
+            clip_to_allocation: true,
+        });
         this._actor.set_pivot_point(0.5, 0.5);
-        this._baseStyle =
-            `background-image: url("${uri}"); background-repeat: no-repeat;`;
-        this._actor.set_style(this._baseStyle);
+        this._sheet = new St.Widget({
+            width: sheetW, height: sheetH,
+            style: `background-image: url("${uri}");`,
+        });
+        this._actor.add_child(this._sheet);
         Main.layoutManager.uiGroup.add_child(this._actor);
 
-        this._signalId = this._proxy.connectSignal(
-            'PetState', (_p, _s, args) => this._onState(args));
+        // connectSignal ne relaie les signaux que sur les proxys issus de
+        // makeProxyWrapper ; sur un proxy nu, on écoute g-signal directement.
+        this._signalId = this._proxy.connect('g-signal', (_p, _sender, name, params) => {
+            if (name === 'PetState') this._onState(params.deepUnpack());
+        });
     }
 
     _onState(args) {
         if (!this._actor) return;
         const [x, y, tile, flipped, opacity] = args;
         const pos = tileBackgroundPosition(tile, this._tileW, this._tileH, this._columns);
-        this._actor.set_style(
-            `${this._baseStyle} background-position: ${pos.x}px ${pos.y}px;`);
+        this._sheet.set_position(pos.x, pos.y);
         this._actor.set_position(x, y);
         this._actor.scale_x = flipped ? -1 : 1;
         this._actor.opacity = clutterOpacity(opacity);
@@ -115,12 +132,14 @@ export default class RustyPetExtension extends Extension {
         this._destroyed = true;
         if (this._connectId) { GLib.source_remove(this._connectId); this._connectId = 0; }
         if (this._proxy && this._signalId) {
-            this._proxy.disconnectSignal(this._signalId);
+            this._proxy.disconnect(this._signalId);
             this._signalId = 0;
         }
         this._proxy = null;
+        // La planche est un enfant de l'acteur : détruite avec lui.
         this._actor?.destroy();
         this._actor = null;
+        this._sheet = null;
         // Arrête le démon lancé par l'extension.
         this._subprocess?.force_exit();
         this._subprocess = null;

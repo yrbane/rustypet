@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.15.2 — 2026-08-02 · « Le pet s'anime enfin à l'écran »
+
+Trois causes racines distinctes empêchaient tout rendu correct :
+
+- Extension : `connectSignal` ne relaie les signaux D-Bus que sur les proxys
+  issus de `makeProxyWrapper` ; sur le proxy nu de l'extension, aucun signal
+  `PetState` n'arrivait. Écoute directe de `g-signal` avec filtre sur le nom.
+- Extension : St (GNOME Shell 50) ne supporte pas `background-position`, le
+  tuilage CSS affichait la planche entière statique. Nouveau rendu : conteneur
+  clippé à la taille d'une tuile (`clip_to_allocation`) contenant la planche
+  entière déplacée aux offsets calculés par `petMath.js`.
+- Moteur : un bord franchi sans transition `<border>` éligible était ignoré et
+  le pet dérivait hors écran à l'infini (x observé à −27 000). Conformément à
+  la spec, le tick renvoie désormais `Respawn` (pet principal) ou `Close`
+  (enfant) — test `sans_transition_de_bord_le_pet_respawne_au_lieu_de_sortir`.
+- README : commandes `cargo install` explicites (le manifeste du workspace est
+  virtuel, `cargo install --path .` échoue ; il faut cibler chaque crate).
+
 ## 0.15.1 — 2026-07-21 · « Session de développement robuste »
 
 - `dev-session.sh` détecte l'absence de `/usr/lib/mutter-devkit` (non empaqueté
