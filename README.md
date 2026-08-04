@@ -134,6 +134,24 @@ tombe. Et **les sons** : des bêlements discrets (18 % d'amplitude, joués
 par l'API sonore de GNOME) au coup de foudre, en parachute et à
 l'atterrissage. Le menu vient dans les plans suivants.
 
+## Multi-plateforme
+
+Le pet **à l'écran** (petd + extension) est Linux/GNOME par nature : D-Bus
+et GNOME Shell ne voyagent pas. En revanche, le moteur est en Rust pur et
+chaque release embarque des binaires du simulateur `petsim` pour :
+
+| Plateforme | Contenu |
+|---|---|
+| Linux x86_64 / ARM64 | `petd` + `petsim` |
+| Windows x86_64 | `petsim.exe` |
+| macOS universel (Apple Silicon + Intel) | `petsim` |
+| Android ARM64 (Termux) | `petsim` |
+
+`petsim` fait vivre n'importe quel pet du corpus sans affichage : trace
+déterministe par graine, fenêtres simulées (`--window`), troupeau complet.
+Un portage d'affichage natif (autre bureau, mobile) pourra se brancher sur
+`pet-engine`/`pet-format` sans toucher au moteur.
+
 ## Documentation
 
 - Conception : `docs/superpowers/specs/2026-07-20-rustypet-design.md`

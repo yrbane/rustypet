@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.22.0 — 2026-08-04 · « Le mouton voyage »
+
+Builds multi-plateformes publiés automatiquement sur chaque release.
+
+- Nouveau workflow GitHub Actions `release.yml` (déclenché par les tags,
+  relançable par `workflow_dispatch` sans retaguer) : runners Linux,
+  Windows et macOS + NDK Android.
+- Binaires attachés aux releases : **Linux x86_64 et ARM64** (petd +
+  petsim), **Windows x86_64** (petsim), **macOS universel** Apple
+  Silicon + Intel via `lipo` (petsim), **Android ARM64** (petsim, à
+  lancer dans Termux).
+- Périmètre assumé : le pet à l'écran (petd + extension) reste
+  Linux/GNOME — D-Bus et GNOME Shell ne voyagent pas. Ce qui voyage,
+  c'est le simulateur headless et les bibliothèques du moteur (Rust pur),
+  vérifiés par `cargo check` croisé (msvc, android, aarch64-linux).
+- README : nouvelle section « Multi-plateforme ».
+
 ## 0.21.0 — 2026-08-04 · « Bêê. (discrètement) »
 
 Le mouton a une voix — mais il ne s'en sert pas pour hurler.
