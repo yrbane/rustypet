@@ -4,8 +4,8 @@
 use pet_format::{decode_sheet, parse_pet};
 use std::collections::HashSet;
 
-/// Les neuf gags inédits générés par `tools/make_rustysheep.py`.
-const GAGS: [&str; 9] = [
+/// Les gags inédits générés par `tools/make_rustysheep.py`.
+const GAGS: [&str; 12] = [
     "dance",
     "smoke",
     "superman",
@@ -15,6 +15,9 @@ const GAGS: [&str; 9] = [
     "parachute",
     "rocket",
     "acid",
+    "rain",
+    "soaked",
+    "umbrella",
 ];
 
 fn xml() -> String {

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.18.0 — 2026-08-04 · « Un petit nuage au-dessus de la tête »
+
+Trois animations météo pour RustySheep, toujours 100 % data-driven :
+
+- `rain` (109) : un nuage gris s'installe au-dessus du mouton et la pluie
+  commence à tomber. Deux issues à 50/50 :
+- `soaked` (110) : trempé jusqu'aux os — laine assombrie et bleutée,
+  gouttes qui perlent, flaque au sol ;
+- `umbrella` (111) : il sort un parapluie rouge et attend que ça passe.
+- Six tuiles inédites (205-210), accroche depuis la marche (probabilité 3).
+- Les index de tuiles 176-204 de la 0.17 restent inchangés (bloc pluie
+  ajouté en fin de sheet, passée de 13 à 14 lignes).
+
 ## 0.17.0 — 2026-08-04 · « RustySheep : les gags complètement oufs »
 
 Nouveau pet embarqué `assets/rustysheep/animations.xml` : le mouton eSheep 64

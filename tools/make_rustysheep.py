@@ -24,7 +24,7 @@ NS = "https://esheep.petrucci.ch/"
 TILE = 40
 COLS = 16
 OLD_ROWS = 11
-NEW_ROWS = 13
+NEW_ROWS = 14
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SRC = Path.home() / "Dev/desktopPet/Pets/esheep64/animations.xml"
 
@@ -237,6 +237,34 @@ def build_tiles(sheet: Image.Image) -> list[Image.Image]:
             )
         tiles.append(t)
 
+    # --- outils pluie : nuage, gouttes, mouton mouillé ---
+    def cloud(d: ImageDraw.ImageDraw, sway: int = 0):
+        for cx, cy, r in ((12, 6, 6), (20, 4, 7), (28, 6, 6), (20, 8, 8)):
+            d.ellipse(
+                (cx + sway - r, cy - r // 2, cx + sway + r, cy + r // 2 + 3),
+                fill=(150, 150, 165, 255),
+            )
+
+    def drops(d: ImageDraw.ImageDraw, phase: int):
+        for k in range(5):
+            dx = 8 + k * 6
+            dy = 14 + ((k * 7 + phase * 5) % 14)
+            d.line((dx, dy, dx, dy + 3), fill=(90, 150, 240, 255), width=1)
+
+    def wet(sprite: Image.Image) -> Image.Image:
+        # laine assombrie et bleutée : le mouton est trempé
+        out = sprite.copy()
+        px = out.load()
+        for yy in range(out.height):
+            for xx in range(out.width):
+                r, g, b, a = px[xx, yy]
+                if a and r > 180 and g > 160 and b < 200:
+                    px[xx, yy] = (int(r * 0.62), int(g * 0.66), int(b * 0.85) + 30, a)
+        return out
+
+    small_front = front.resize((32, 32), Image.NEAREST)
+    wet_front = wet(small_front)
+
     # --- acid (201-204) : teintes cyclées, yeux en spirale ---
     for i in range(4):
         t = on_canvas(hue_shift(front, i * 0.25))
@@ -249,6 +277,44 @@ def build_tiles(sheet: Image.Image) -> list[Image.Image]:
         rainbow = [(255, 0, 0), (255, 160, 0), (0, 200, 80), (80, 80, 255)]
         for k, c in enumerate(rainbow):
             d.point(((5 + k * 9 + i * 3) % 38, 3 + (k * 5 + i * 2) % 9), fill=c + (255,))
+        tiles.append(t)
+
+    # --- rain (205-206) : le nuage s'installe, premières gouttes ---
+    for phase in range(2):
+        t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+        t.alpha_composite(small_front, (4, 8))
+        d = ImageDraw.Draw(t)
+        cloud(d, sway=phase)
+        drops(d, phase)
+        tiles.append(t)
+
+    # --- soaked (207-208) : trempé jusqu'aux os, flaque ---
+    for phase in range(2):
+        t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+        squashed = wet_front.resize((32, 28), Image.NEAREST)
+        t.alpha_composite(squashed, (4, 12))
+        d = ImageDraw.Draw(t)
+        cloud(d, sway=phase)
+        drops(d, phase)
+        # flaque bleutée sous le mouton
+        d.ellipse((6, 36, 34, 40), fill=(100, 150, 230, 160))
+        # gouttes qui perlent de la laine
+        d.point((8, 34 - phase), fill=(90, 150, 240, 255))
+        d.point((30, 33 + phase), fill=(90, 150, 240, 255))
+        tiles.append(t)
+
+    # --- umbrella (209-210) : parapluie rouge, pluie qui rebondit ---
+    for phase in range(2):
+        t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+        t.alpha_composite(small_front, (4, 8))
+        d = ImageDraw.Draw(t)
+        cloud(d, sway=phase)
+        drops(d, phase)
+        # parapluie : calotte rouge à liseré, mât et poignée
+        d.pieslice((4, 8, 36, 30), 180, 360, fill=(210, 40, 40, 255))
+        d.pieslice((10, 12, 30, 30), 180, 360, fill=(240, 80, 70, 255))
+        d.line((20, 19, 20, 34), fill=(80, 60, 40, 255), width=2)
+        d.arc((16, 32, 24, 38), 0, 180, fill=(80, 60, 40, 255), width=2)
         tiles.append(t)
 
     return tiles
@@ -335,6 +401,13 @@ def build_animations() -> list[ET.Element]:
                  repeat="7", repeat_from=2, gravity=None),
         anim_xml(108, "acid", [201, 202, 203, 204],
                  start=("-1", "0", "170"), end=("1", "0", "170"), repeat="7"),
+        anim_xml(109, "rain", [205, 206],
+                 start=("0", "0", "250"), repeat="3",
+                 nexts=(("50", None, "110"), ("50", None, "111"))),
+        anim_xml(110, "soaked", [207, 208, 207, 208, 208, 208],
+                 start=("0", "0", "340")),
+        anim_xml(111, "umbrella", [209, 210],
+                 start=("0", "0", "250"), repeat="4"),
     ]
 
 
@@ -342,6 +415,7 @@ def build_animations() -> list[ET.Element]:
 WALK_HOOKS = [
     (100, 4), (101, 3), (102, 2), (103, 3),
     (104, 3), (105, 4), (107, 2), (108, 2),
+    (109, 3),
 ]
 
 

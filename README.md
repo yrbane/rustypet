@@ -104,10 +104,10 @@ Le spritesheet décodé (couleur-clé convertie en transparence) est écrit dans
 ### Choisir son pet
 
 Par défaut, le neko. Le dépôt embarque **RustySheep**, le mouton eSheep 64
-enrichi de neuf gags inédits (danse, joint, superman, crotte, lunettes de
+enrichi de gags inédits (danse, joint, superman, crotte, lunettes de
 soleil, fleur qui pousse et se fait manger, arrivée en parachute, départ en
-fusée, trip sous acide) en plus des classiques (dormir, brouter, respirer
-une fleur) :
+fusée, trip sous acide, nuage de pluie — trempé ou parapluie) en plus des
+classiques (dormir, brouter, respirer une fleur) :
 
 ```bash
 mkdir -p ~/.config/rustypet
