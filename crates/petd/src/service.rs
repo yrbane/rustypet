@@ -44,6 +44,21 @@ impl PetService {
         engine.set_windows(rects);
     }
 
+    /// Le pet principal est attrapé à la souris.
+    async fn begin_drag(&self) {
+        self.engine.lock().await.begin_drag();
+    }
+
+    /// Le curseur a bougé pendant le glisser (coordonnées écran).
+    async fn drag_to(&self, x: i32, y: i32) {
+        self.engine.lock().await.drag_to(x, y);
+    }
+
+    /// Le pet principal est relâché : il retombe.
+    async fn end_drag(&self) {
+        self.engine.lock().await.end_drag();
+    }
+
     /// Renseigne l'extension sur le PNG à charger et sa grille de tuiles.
     async fn get_sprite(&self) -> (String, u32, u32, u32) {
         let engine = self.engine.lock().await;

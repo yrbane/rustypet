@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.20.0 — 2026-08-04 · « Attrape-moi si tu peux »
+
+Le glisser-déposer à la souris : on attrape le pet principal, il gigote
+(l'animation `drag` d'origine), on le promène, on le lâche… il tombe.
+
+- Moteur : `drag_to` déplace immédiatement (zéro latence visuelle), le
+  tick ne fait que confirmer ; le relâcher enchaîne sur `fall`.
+- petd : méthodes D-Bus `BeginDrag`, `DragTo(ii)`, `EndDrag`, couvertes
+  par le smoke test.
+- Extension : le pet principal est réactif — grab Clutter au clic, suivi
+  local du pointeur, envois D-Bus throttlés à 33 ms (`dragSendDue`,
+  testée sous gjs) ; pendant le glisser, le signal du démon ne pilote
+  plus la position du principal.
+
 ## 0.19.0 — 2026-08-04 · « La moutonne, les agneaux : le troupeau »
 
 RustyPet devient multi-pets : le format `<childs>` d'eSheep prend vie.

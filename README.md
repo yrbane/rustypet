@@ -128,8 +128,9 @@ toits, chute quand la fenêtre se ferme ou bouge), **les gags de RustySheep**
 (danse, joint, superman, crotte, lunettes, fleur, parachute, fusée, acide,
 pluie, sommeil, broutage) et **le multi-pets** : le coup de foudre fait
 entrer la moutonne, puis deux agneaux trottinent derrière le couple — les
-scènes à deux moutons d'origine (bain, mouton noir) marchent aussi.
-L'audio, le menu et le glisser-déposer viennent dans les plans suivants.
+scènes à deux moutons d'origine (bain, mouton noir) marchent aussi. Et **le
+glisser-déposer** : attrape le mouton à la souris, il gigote, lâche-le, il
+tombe. L'audio et le menu viennent dans les plans suivants.
 
 ## Documentation
 

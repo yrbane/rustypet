@@ -268,10 +268,15 @@ impl Pet {
         }
     }
 
-    /// Le curseur a bougé pendant le glisser.
+    /// Le curseur a bougé pendant le glisser. La position suit sans attendre
+    /// le prochain tick : aucune latence visuelle.
     pub fn drag_to(&mut self, x: i32, y: i32) {
         self.drag_x = x;
         self.drag_y = y;
+        if self.dragging {
+            self.position_x = x - self.tile_w / 2;
+            self.position_y = y - 2;
+        }
     }
 
     /// Le pet est relâché : il tombe.

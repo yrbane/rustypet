@@ -3,13 +3,18 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Meta from 'gi://Meta';
+import Clutter from 'gi://Clutter';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
     tileBackgroundPosition, clutterOpacity, windowRectsChanged, chosenPetPath,
+    dragSendDue,
 } from './petMath.js';
+
+// Au plus un envoi de position D-Bus tous les 33 ms pendant le glisser.
+const DRAG_SEND_GAP_MS = 33;
 
 // new_for_bus est une fonction async C (callback en dernier argument) :
 // la promisification est indispensable pour pouvoir l'await-er.
@@ -33,6 +38,10 @@ export default class RustyPetExtension extends Extension {
         this._columns = 1;
         this._windowsId = 0;
         this._lastWindows = null;
+        // État du glisser-déposer du pet principal.
+        this._grab = null;
+        this._stageHandlerId = 0;
+        this._lastDragSent = null;
         // Drapeau de démontage : protège _connect() contre une reprise
         // après un disable() survenu pendant son await.
         this._destroyed = false;
@@ -170,11 +179,12 @@ export default class RustyPetExtension extends Extension {
     }
 
     // Crée le widget clippé d'un acteur (conteneur à la taille d'une tuile,
-    // planche entière déplacée à l'intérieur).
-    _makeActor() {
+    // planche entière déplacée à l'intérieur). Seul le pet principal est
+    // réactif : on peut l'attraper à la souris.
+    _makeActor(isMain) {
         const { uri, sheetW, sheetH } = this._sheetInfo;
         const actor = new St.Widget({
-            reactive: false, width: this._tileW, height: this._tileH,
+            reactive: isMain, width: this._tileW, height: this._tileH,
             clip_to_allocation: true,
         });
         actor.set_pivot_point(0.5, 0.5);
@@ -184,7 +194,60 @@ export default class RustyPetExtension extends Extension {
         });
         actor.add_child(sheet);
         Main.layoutManager.uiGroup.add_child(actor);
+        if (isMain)
+            actor.connect('button-press-event', () => this._beginDrag(actor));
         return { actor, sheet };
+    }
+
+    // Attrape le pet : physique suspendue côté démon, suivi du pointeur en
+    // local (aucune latence) + envois D-Bus throttlés.
+    _beginDrag(actor) {
+        if (this._grab || !this._proxy) return Clutter.EVENT_PROPAGATE;
+        this._call('BeginDrag', null);
+        this._grab = global.stage.grab(actor);
+        this._stageHandlerId = global.stage.connect('captured-event', (_s, event) => {
+            const type = event.type();
+            if (type === Clutter.EventType.MOTION) {
+                const [x, y] = event.get_coords();
+                actor.set_position(Math.round(x) - this._tileW / 2, Math.round(y) - 2);
+                const now = GLib.get_monotonic_time() / 1000;
+                if (dragSendDue(this._lastDragSent, now, DRAG_SEND_GAP_MS)) {
+                    this._lastDragSent = now;
+                    this._call('DragTo',
+                        new GLib.Variant('(ii)', [Math.round(x), Math.round(y)]));
+                }
+                return Clutter.EVENT_STOP;
+            }
+            if (type === Clutter.EventType.BUTTON_RELEASE) {
+                this._endDrag();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        return Clutter.EVENT_STOP;
+    }
+
+    _endDrag() {
+        if (this._stageHandlerId) {
+            global.stage.disconnect(this._stageHandlerId);
+            this._stageHandlerId = 0;
+        }
+        this._grab?.dismiss();
+        this._grab = null;
+        this._lastDragSent = null;
+        this._call('EndDrag', null);
+    }
+
+    // Appel D-Bus « fire and forget », erreurs journalisées.
+    _call(method, args) {
+        this._proxy?.call(method, args, Gio.DBusCallFlags.NONE, -1, null,
+            (proxy, res) => {
+                try {
+                    proxy.call_finish(res);
+                } catch (e) {
+                    logError(e, `RustyPet: ${method}`);
+                }
+            });
     }
 
     _onState(args) {
@@ -192,7 +255,7 @@ export default class RustyPetExtension extends Extension {
         const [actors] = args;
         // Ajuste le nombre de widgets au nombre d'acteurs reçus.
         while (this._actors.length < actors.length)
-            this._actors.push(this._makeActor());
+            this._actors.push(this._makeActor(this._actors.length === 0));
         while (this._actors.length > actors.length)
             this._actors.pop().actor.destroy();
 
@@ -200,7 +263,10 @@ export default class RustyPetExtension extends Extension {
             const { actor, sheet } = this._actors[i];
             const pos = tileBackgroundPosition(tile, this._tileW, this._tileH, this._columns);
             sheet.set_position(pos.x, pos.y);
-            actor.set_position(x, y);
+            // Pendant le glisser, la position du principal est pilotée en
+            // local par le pointeur ; le démon ne fait que confirmer.
+            if (i !== 0 || !this._grab)
+                actor.set_position(x, y);
             actor.scale_x = flipped ? -1 : 1;
             actor.opacity = clutterOpacity(opacity);
         });
@@ -211,6 +277,14 @@ export default class RustyPetExtension extends Extension {
         // _connect() en cours (suspendue sur son await) se sache obsolète
         // dès qu'elle reprendra, et n'assigne ni proxy ni acteur.
         this._destroyed = true;
+        // Un glisser en cours est abandonné : le démon va être arrêté, seul
+        // le nettoyage local (grab et handler de scène) importe.
+        if (this._stageHandlerId) {
+            global.stage.disconnect(this._stageHandlerId);
+            this._stageHandlerId = 0;
+        }
+        this._grab?.dismiss();
+        this._grab = null;
         if (this._connectId) { GLib.source_remove(this._connectId); this._connectId = 0; }
         if (this._windowsId) { GLib.source_remove(this._windowsId); this._windowsId = 0; }
         this._lastWindows = null;

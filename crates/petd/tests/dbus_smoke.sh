@@ -39,6 +39,14 @@ run() {
   busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
     dev.yrbane.RustyPet1 UpdateWindows "a(iiii)" 2 200 400 600 500 1000 600 700 400
 
+  # Glisser-déposer : attrape, déplace, relâche.
+  busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
+    dev.yrbane.RustyPet1 BeginDrag
+  busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
+    dev.yrbane.RustyPet1 DragTo ii 640 360
+  busctl --user call dev.yrbane.RustyPet /dev/yrbane/RustyPet \
+    dev.yrbane.RustyPet1 EndDrag
+
   sleep 2
   kill "$monpid" 2>/dev/null || true
   kill "$pid" 2>/dev/null || true

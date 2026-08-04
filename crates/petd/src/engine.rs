@@ -116,6 +116,27 @@ impl Engine {
             .collect()
     }
 
+    /// Le pet principal est attrapé à la souris : physique suspendue.
+    pub fn begin_drag(&mut self) {
+        if let Some(flock) = self.flock.as_mut() {
+            flock.main_pet_mut().begin_drag(&self.world, &mut self.rng);
+        }
+    }
+
+    /// Le curseur a bougé pendant le glisser.
+    pub fn drag_to(&mut self, x: i32, y: i32) {
+        if let Some(flock) = self.flock.as_mut() {
+            flock.main_pet_mut().drag_to(x, y);
+        }
+    }
+
+    /// Le pet principal est relâché : il retombe.
+    pub fn end_drag(&mut self) {
+        if let Some(flock) = self.flock.as_mut() {
+            flock.main_pet_mut().end_drag(&self.world, &mut self.rng);
+        }
+    }
+
     /// Délai avant la prochaine échéance du troupeau, en millisecondes.
     pub fn interval_ms(&self) -> u64 {
         self.flock
@@ -175,6 +196,50 @@ mod tests {
                 elapsed = engine.interval_ms() as i64;
                 assert!(elapsed >= 1, "cadence jamais nulle");
             }
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn le_glisser_colle_le_pet_au_curseur_puis_le_relache() {
+        with_temp_cache(|| {
+            let mut engine = Engine::load(&neko_path(), 42).expect("chargement");
+            engine.configure(Rect::new(0, 0, 1920, 1080), Rect::new(0, 0, 1920, 1050));
+
+            engine.begin_drag();
+            engine.drag_to(600, 400);
+            let frames = engine.advance(50);
+            let main = frames[0];
+            // Le pet est accroché au curseur (centré sur lui, à 2 px près).
+            assert!(
+                (main.x - 600).abs() <= 32 && (main.y - 400).abs() <= 32,
+                "pendant le glisser, le pet doit suivre le curseur (position {},{})",
+                main.x,
+                main.y
+            );
+
+            engine.drag_to(300, 200);
+            let frames = engine.advance(50);
+            let main = frames[0];
+            assert!(
+                (main.x - 300).abs() <= 32 && (main.y - 200).abs() <= 32,
+                "le pet doit suivre le curseur qui bouge"
+            );
+
+            // Au relâcher, la physique reprend : il tombe.
+            engine.end_drag();
+            let y0 = engine.advance(50)[0].y;
+            let mut fell = false;
+            let mut elapsed = engine.interval_ms() as i64;
+            for _ in 0..30 {
+                let y = engine.advance(elapsed)[0].y;
+                elapsed = engine.interval_ms() as i64;
+                if y > y0 {
+                    fell = true;
+                    break;
+                }
+            }
+            assert!(fell, "relâché en l'air, le pet doit retomber");
         });
     }
 

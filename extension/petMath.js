@@ -35,6 +35,13 @@ export function windowRectsChanged(previous, current) {
  * Chemin du pet à charger : celui de la config s'il désigne un fichier
  * existant (`exists` est injecté pour rester testable), sinon le repli.
  */
+// Pendant un glisser, faut-il envoyer cette position au démon ?
+// Limite le trafic D-Bus à un envoi tous les `minGapMs` millisecondes.
+export function dragSendDue(lastSentMs, nowMs, minGapMs) {
+    if (lastSentMs === null || lastSentMs === undefined) return true;
+    return nowMs - lastSentMs >= minGapMs;
+}
+
 export function chosenPetPath(configText, fallback, exists) {
     const path = (configText ?? '').trim();
     if (path !== '' && exists(path)) return path;

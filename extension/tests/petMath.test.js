@@ -3,6 +3,7 @@
 
 import {
     tileBackgroundPosition, clutterOpacity, windowRectsChanged, chosenPetPath,
+    dragSendDue,
 } from '../petMath.js';
 
 function assertEq(actual, expected, label) {
@@ -44,5 +45,11 @@ assertEq(chosenPetPath('', '/defaut/neko.xml', existant),
     '/defaut/neko.xml', 'config vide');
 assertEq(chosenPetPath(null, '/defaut/neko.xml', existant),
     '/defaut/neko.xml', 'pas de config');
+
+// Throttle du glisser : au plus un envoi D-Bus tous les minGapMs.
+assertEq(dragSendDue(null, 1000, 33), true, 'premier envoi immédiat');
+assertEq(dragSendDue(1000, 1010, 33), false, 'trop tôt');
+assertEq(dragSendDue(1000, 1033, 33), true, 'écart atteint');
+assertEq(dragSendDue(1000, 2000, 33), true, 'longtemps après');
 
 print('OK');
