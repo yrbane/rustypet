@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.17.0 — 2026-08-04 · « RustySheep : les gags complètement oufs »
+
+Nouveau pet embarqué `assets/rustysheep/animations.xml` : le mouton eSheep 64
+enrichi de neuf gags inédits, sans une ligne de moteur en plus — tout passe
+par le format data-driven d'origine.
+
+- Neuf animations nouvelles (id ≥ 100) : `dance` (déhanché + notes de
+  musique), `smoke` (joint et volutes), `superman` (cape rouge, sortie
+  d'écran en diagonale puis respawn), `poop` (petite crotte fièrement
+  assumée), `sunglasses` (« deal with it »), `flower_grow` (une fleur pousse
+  en trois stades, il la mange), `parachute` (nouvelle arrivée possible,
+  spawn dédié), `rocket` (décollage accéléré par interpolation start→end),
+  `acid` (teintes psychédéliques cyclées, yeux en spirale, marche titubante).
+- Les classiques restent hérités du mouton : dormir (`sleep1-3`), brouter
+  (`eat`), respirer une fleur (`flower`).
+- `tools/make_rustysheep.py` : générateur committé (PIL) qui compose les
+  29 tuiles inédites par-dessus les sprites d'origine (crédits conservés
+  dans l'en-tête) et étend la sheet de 11 à 13 lignes.
+- Tests : `crates/pet-format/tests/rustysheep.rs` — parsing, présence des
+  neuf gags, atteignabilité depuis les spawns (parcours de graphe), frames
+  couvertes par la sheet, aucune impasse. Validé en simulation petsim sur
+  10 graines × 4000 ticks : chaque gag apparaît, la marche reste crédible
+  (65 % du temps contre 88 % avant).
+
 ## 0.16.0 — 2026-08-02 · « Marche sur les fenêtres et choix du pet »
 
 Le pet fait enfin ses trucs de mouton : il tombe du haut de l'écran, atterrit

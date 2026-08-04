@@ -103,22 +103,31 @@ Le spritesheet décodé (couleur-clé convertie en transparence) est écrit dans
 
 ### Choisir son pet
 
-Par défaut, le neko. Pour un autre pet du corpus (le mouton, par exemple) :
+Par défaut, le neko. Le dépôt embarque **RustySheep**, le mouton eSheep 64
+enrichi de neuf gags inédits (danse, joint, superman, crotte, lunettes de
+soleil, fleur qui pousse et se fait manger, arrivée en parachute, départ en
+fusée, trip sous acide) en plus des classiques (dormir, brouter, respirer
+une fleur) :
 
 ```bash
 mkdir -p ~/.config/rustypet
-echo ~/Dev/desktopPet/Pets/esheep64/animations.xml > ~/.config/rustypet/pet
+echo "$PWD/assets/rustysheep/animations.xml" > ~/.config/rustypet/pet
 ```
 
-Puis déconnexion/reconnexion de session. Supprimer le fichier revient au neko.
+N'importe quel `animations.xml` du corpus eSheep fonctionne aussi
+(`~/Dev/desktopPet/Pets/esheep64/animations.xml` pour le mouton d'origine).
+Puis déconnexion/reconnexion de session. Supprimer le fichier revient au
+neko. RustySheep est regénérable depuis les sprites d'origine avec
+`python3 tools/make_rustysheep.py`.
 
 ### Ce qui marche à ce stade
 
 Un seul pet, la physique des bords d'écran (il marche, tombe, rebondit sur les
-bords et la barre des tâches) **et la marche sur les fenêtres** : le pet
-atterrit sur les toits, les arpente, et chute quand la fenêtre se ferme ou
-bouge. L'audio, le menu, le glisser-déposer et le multi-pets viennent dans les
-plans suivants.
+bords et la barre des tâches), **la marche sur les fenêtres** (atterrissage
+sur les toits, chute quand la fenêtre se ferme ou bouge) et **les gags de
+RustySheep** (danse, joint, superman, crotte, lunettes, fleur, parachute,
+fusée, acide, sommeil, broutage). L'audio, le menu, le glisser-déposer et le
+multi-pets viennent dans les plans suivants.
 
 ## Documentation
 
