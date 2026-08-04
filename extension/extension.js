@@ -21,8 +21,10 @@ const IFACE = 'dev.yrbane.RustyPet1';
 
 export default class RustyPetExtension extends Extension {
     enable() {
-        this._actor = null;
-        this._sheet = null;
+        // Un widget par acteur du troupeau (le principal, puis les enfants) :
+        // chaque entrée est { actor, sheet }.
+        this._actors = [];
+        this._sheetInfo = null;
         this._proxy = null;
         this._signalId = 0;
         this._subprocess = null;
@@ -118,17 +120,7 @@ export default class RustyPetExtension extends Extension {
         // taille d'une tuile et on déplace la planche entière à l'intérieur.
         // Dimensions naturelles de la planche lues dans l'en-tête du PNG.
         const [, sheetW, sheetH] = GdkPixbuf.Pixbuf.get_file_info(sheetPath);
-        this._actor = new St.Widget({
-            reactive: false, width: tileW, height: tileH,
-            clip_to_allocation: true,
-        });
-        this._actor.set_pivot_point(0.5, 0.5);
-        this._sheet = new St.Widget({
-            width: sheetW, height: sheetH,
-            style: `background-image: url("${uri}");`,
-        });
-        this._actor.add_child(this._sheet);
-        Main.layoutManager.uiGroup.add_child(this._actor);
+        this._sheetInfo = { uri, sheetW, sheetH };
 
         // connectSignal ne relaie les signaux que sur les proxys issus de
         // makeProxyWrapper ; sur un proxy nu, on écoute g-signal directement.
@@ -177,14 +169,41 @@ export default class RustyPetExtension extends Extension {
             });
     }
 
+    // Crée le widget clippé d'un acteur (conteneur à la taille d'une tuile,
+    // planche entière déplacée à l'intérieur).
+    _makeActor() {
+        const { uri, sheetW, sheetH } = this._sheetInfo;
+        const actor = new St.Widget({
+            reactive: false, width: this._tileW, height: this._tileH,
+            clip_to_allocation: true,
+        });
+        actor.set_pivot_point(0.5, 0.5);
+        const sheet = new St.Widget({
+            width: sheetW, height: sheetH,
+            style: `background-image: url("${uri}");`,
+        });
+        actor.add_child(sheet);
+        Main.layoutManager.uiGroup.add_child(actor);
+        return { actor, sheet };
+    }
+
     _onState(args) {
-        if (!this._actor) return;
-        const [x, y, tile, flipped, opacity] = args;
-        const pos = tileBackgroundPosition(tile, this._tileW, this._tileH, this._columns);
-        this._sheet.set_position(pos.x, pos.y);
-        this._actor.set_position(x, y);
-        this._actor.scale_x = flipped ? -1 : 1;
-        this._actor.opacity = clutterOpacity(opacity);
+        if (!this._sheetInfo || this._destroyed) return;
+        const [actors] = args;
+        // Ajuste le nombre de widgets au nombre d'acteurs reçus.
+        while (this._actors.length < actors.length)
+            this._actors.push(this._makeActor());
+        while (this._actors.length > actors.length)
+            this._actors.pop().actor.destroy();
+
+        actors.forEach(([x, y, tile, flipped, opacity], i) => {
+            const { actor, sheet } = this._actors[i];
+            const pos = tileBackgroundPosition(tile, this._tileW, this._tileH, this._columns);
+            sheet.set_position(pos.x, pos.y);
+            actor.set_position(x, y);
+            actor.scale_x = flipped ? -1 : 1;
+            actor.opacity = clutterOpacity(opacity);
+        });
     }
 
     disable() {
@@ -200,10 +219,10 @@ export default class RustyPetExtension extends Extension {
             this._signalId = 0;
         }
         this._proxy = null;
-        // La planche est un enfant de l'acteur : détruite avec lui.
-        this._actor?.destroy();
-        this._actor = null;
-        this._sheet = null;
+        // Les planches sont des enfants des acteurs : détruites avec eux.
+        for (const { actor } of this._actors) actor.destroy();
+        this._actors = [];
+        this._sheetInfo = null;
         // Arrête le démon lancé par l'extension.
         this._subprocess?.force_exit();
         this._subprocess = null;

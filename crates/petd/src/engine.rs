@@ -2,7 +2,7 @@
 //! pas, et convertit chaque pas en une image affichable (`PetFrame`).
 
 use crate::cache::write_sprite_png;
-use pet_engine::{Pet, Rect, SeededRng, TickOutcome, World};
+use pet_engine::{Flock, Rect, SeededRng, World};
 use pet_format::{PetDefinition, decode_sheet, parse_pet};
 use std::sync::Arc;
 
@@ -34,7 +34,7 @@ pub enum EngineError {
     Format(#[from] pet_format::FormatError),
 }
 
-/// Pilote complet d'un pet vivant.
+/// Pilote complet d'un troupeau vivant (pet principal + enfants).
 pub struct Engine {
     definition: Arc<PetDefinition>,
     tile: (i32, i32),
@@ -42,7 +42,7 @@ pub struct Engine {
     sheet_path: String,
     rng: SeededRng,
     world: World,
-    pet: Option<Pet>,
+    flock: Option<Flock>,
 }
 
 impl Engine {
@@ -62,7 +62,7 @@ impl Engine {
             rng: SeededRng::new(seed),
             // Monde provisoire, remplacé au premier configure.
             world: World::simple(1, 1),
-            pet: None,
+            flock: None,
         })
     }
 
@@ -77,16 +77,16 @@ impl Engine {
     }
 
     /// (Ré)initialise le monde à partir de la géométrie de l'écran, et fait
-    /// (ré)apparaître le pet.
+    /// (ré)apparaître le troupeau.
     pub fn configure(&mut self, bounds: Rect, area: Rect) {
         self.world = World {
             bounds,
             area,
             windows: Vec::new(),
         };
-        let mut pet = Pet::new(Arc::clone(&self.definition), self.tile, &self.world);
-        pet.spawn(&self.world, &mut self.rng);
-        self.pet = Some(pet);
+        let mut flock = Flock::new(Arc::clone(&self.definition), self.tile, &self.world);
+        flock.spawn(&self.world, &mut self.rng);
+        self.flock = Some(flock);
     }
 
     /// Met à jour les fenêtres sur lesquelles le pet peut marcher.
@@ -94,36 +94,33 @@ impl Engine {
         self.world.windows = windows;
     }
 
-    /// Avance d'un pas et retourne l'image à afficher. Réapparition gérée.
-    pub fn advance(&mut self) -> PetFrame {
-        let Some(pet) = self.pet.as_mut() else {
-            // Pas encore configuré : image neutre invisible.
-            return PetFrame {
-                x: 0,
-                y: 0,
-                tile: 0,
-                flipped: false,
-                opacity: 0,
-            };
+    /// Fait passer `elapsed_ms` millisecondes et retourne les images à
+    /// afficher, le pet principal en tête. Réapparitions et fermetures
+    /// d'enfants gérées par le troupeau.
+    pub fn advance(&mut self, elapsed_ms: i64) -> Vec<PetFrame> {
+        let Some(flock) = self.flock.as_mut() else {
+            // Pas encore configuré : aucun acteur.
+            return Vec::new();
         };
-        if pet.tick(&self.world, &mut self.rng) == TickOutcome::Respawn {
-            pet.spawn(&self.world, &mut self.rng);
-        }
-        let draw = pet.draw();
-        PetFrame {
-            x: draw.x,
-            y: draw.y,
-            tile: draw.frame.max(0) as u32,
-            flipped: draw.flipped,
-            opacity: (draw.opacity.clamp(0.0, 1.0) * 255.0).round() as u32,
-        }
+        flock.advance(&self.world, &mut self.rng, elapsed_ms);
+        flock
+            .draws()
+            .iter()
+            .map(|draw| PetFrame {
+                x: draw.x,
+                y: draw.y,
+                tile: draw.frame.max(0) as u32,
+                flipped: draw.flipped,
+                opacity: (draw.opacity.clamp(0.0, 1.0) * 255.0).round() as u32,
+            })
+            .collect()
     }
 
-    /// Délai avant le prochain pas, en millisecondes (au moins 1).
+    /// Délai avant la prochaine échéance du troupeau, en millisecondes.
     pub fn interval_ms(&self) -> u64 {
-        self.pet
+        self.flock
             .as_ref()
-            .map(|p| p.interval_ms().max(1) as u64)
+            .map(|f| f.next_wait_ms().max(1) as u64)
             .unwrap_or(100)
     }
 }
@@ -167,11 +164,16 @@ mod tests {
         with_temp_cache(|| {
             let mut engine = Engine::load(&neko_path(), 42).expect("chargement");
             engine.configure(Rect::new(0, 0, 1920, 1080), Rect::new(0, 0, 1920, 1050));
+            let mut elapsed = 0;
             for _ in 0..500 {
-                let frame = engine.advance();
-                // Opacité toujours dans l'échelle Clutter, cadence jamais nulle.
-                assert!((0..=255).contains(&frame.opacity));
-                assert!(engine.interval_ms() >= 1);
+                let frames = engine.advance(elapsed);
+                assert!(!frames.is_empty(), "le principal est toujours affiché");
+                for frame in &frames {
+                    // Opacité toujours dans l'échelle Clutter.
+                    assert!((0..=255).contains(&frame.opacity));
+                }
+                elapsed = engine.interval_ms() as i64;
+                assert!(elapsed >= 1, "cadence jamais nulle");
             }
         });
     }
@@ -183,10 +185,15 @@ mod tests {
             let trace = |seed| {
                 let mut e = Engine::load(&neko_path(), seed).expect("chargement");
                 e.configure(Rect::new(0, 0, 1920, 1080), Rect::new(0, 0, 1920, 1050));
+                let mut elapsed = 0;
                 (0..300)
                     .map(|_| {
-                        let f = e.advance();
-                        (f.x, f.y, f.tile, f.flipped)
+                        let frames = e.advance(elapsed);
+                        elapsed = e.interval_ms() as i64;
+                        frames
+                            .iter()
+                            .map(|f| (f.x, f.y, f.tile, f.flipped))
+                            .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>()
             };

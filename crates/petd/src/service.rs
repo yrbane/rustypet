@@ -51,16 +51,13 @@ impl PetService {
         (info.sheet_path, info.tile_w, info.tile_h, info.columns)
     }
 
-    /// Émis à chaque pas : position, tuile, miroir, opacité (0–255).
+    /// Émis à chaque pas : un tuple (x, y, tuile, miroir, opacité 0–255)
+    /// par acteur, le pet principal en tête, les enfants ensuite.
     // `pub` nécessaire : le brief appelle `PetService::pet_state` depuis
     // `main.rs`, un module distinct de `service.rs`.
     #[zbus(signal)]
     pub async fn pet_state(
         emitter: &SignalEmitter<'_>,
-        x: i32,
-        y: i32,
-        tile: u32,
-        flipped: bool,
-        opacity: u32,
+        actors: Vec<(i32, i32, u32, bool, u32)>,
     ) -> zbus::Result<()>;
 }

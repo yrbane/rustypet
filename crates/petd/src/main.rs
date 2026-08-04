@@ -43,25 +43,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interface::<_, PetService>("/dev/yrbane/RustyPet")
         .await?;
 
-    // Boucle temps : avance le pet et émet son état à la cadence des animations.
+    // Boucle temps : avance le troupeau et émet l'état de tous les acteurs
+    // à la cadence de la plus proche échéance d'animation.
+    let mut elapsed: i64 = 0;
     loop {
-        let (frame, wait) = {
+        let (actors, wait) = {
             let mut engine = shared.lock().await;
-            let frame = engine.advance();
-            (frame, engine.interval_ms())
+            let frames = engine.advance(elapsed);
+            (frames, engine.interval_ms())
         }; // mutex relâché avant de dormir
 
+        let actors: Vec<(i32, i32, u32, bool, u32)> = actors
+            .iter()
+            .map(|f| (f.x, f.y, f.tile, f.flipped, f.opacity))
+            .collect();
         let emitter = iface.signal_emitter();
-        PetService::pet_state(
-            emitter,
-            frame.x,
-            frame.y,
-            frame.tile,
-            frame.flipped,
-            frame.opacity,
-        )
-        .await?;
+        PetService::pet_state(emitter, actors).await?;
 
+        elapsed = wait as i64;
         sleep(Duration::from_millis(wait)).await;
     }
 }

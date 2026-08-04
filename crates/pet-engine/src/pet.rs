@@ -197,6 +197,25 @@ impl Pet {
         self.set_animation(next, world, rng);
     }
 
+    /// Fait apparaître ce pet comme enfant : position déclarée par le
+    /// `<child>`, fermeture (au lieu du respawn) en fin de chaîne (§5.3).
+    pub fn spawn_child(&mut self, child: &pet_format::Child, world: &World, rng: &mut dyn PetRng) {
+        self.is_child = true;
+        self.ctx.rand_spawn = rng.gen_range_i32(10, 90);
+        self.refresh_context(world);
+
+        let mut child = child.clone();
+        child.x.update(&self.ctx, rng, false);
+        child.y.update(&self.ctx, rng, false);
+        self.position_x = world.bounds.x + child.x.get();
+        self.position_y = world.bounds.y + child.y.get();
+        self.offset_y = 0;
+        self.opacity = 1.0;
+        self.on_window = None;
+
+        self.set_animation(child.next, world, rng);
+    }
+
     /// Démarre une animation. Le premier tick portera le pas 0.
     fn set_animation(&mut self, id: i32, world: &World, rng: &mut dyn PetRng) {
         self.refresh_context(world);

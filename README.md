@@ -122,12 +122,14 @@ neko. RustySheep est regénérable depuis les sprites d'origine avec
 
 ### Ce qui marche à ce stade
 
-Un seul pet, la physique des bords d'écran (il marche, tombe, rebondit sur les
-bords et la barre des tâches), **la marche sur les fenêtres** (atterrissage
-sur les toits, chute quand la fenêtre se ferme ou bouge) et **les gags de
-RustySheep** (danse, joint, superman, crotte, lunettes, fleur, parachute,
-fusée, acide, sommeil, broutage). L'audio, le menu, le glisser-déposer et le
-multi-pets viennent dans les plans suivants.
+La physique des bords d'écran (il marche, tombe, rebondit sur les bords et
+la barre des tâches), **la marche sur les fenêtres** (atterrissage sur les
+toits, chute quand la fenêtre se ferme ou bouge), **les gags de RustySheep**
+(danse, joint, superman, crotte, lunettes, fleur, parachute, fusée, acide,
+pluie, sommeil, broutage) et **le multi-pets** : le coup de foudre fait
+entrer la moutonne, puis deux agneaux trottinent derrière le couple — les
+scènes à deux moutons d'origine (bain, mouton noir) marchent aussi.
+L'audio, le menu et le glisser-déposer viennent dans les plans suivants.
 
 ## Documentation
 

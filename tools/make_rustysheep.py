@@ -317,6 +317,62 @@ def build_tiles(sheet: Image.Image) -> list[Image.Image]:
         d.arc((16, 32, 24, 38), 0, 180, fill=(80, 60, 40, 255), width=2)
         tiles.append(t)
 
+    # --- outils amour : teinte rosée, nœud, petits cœurs ---
+    def rosy(sprite: Image.Image) -> Image.Image:
+        # laine rosée : c'est la moutonne
+        out = sprite.copy()
+        px = out.load()
+        for yy in range(out.height):
+            for xx in range(out.width):
+                r, g, b, a = px[xx, yy]
+                if a and r > 180 and g > 160 and b < 200:
+                    px[xx, yy] = (
+                        min(255, int(r * 0.9) + 40),
+                        int(g * 0.78),
+                        min(255, int(b * 0.9) + 55),
+                        a,
+                    )
+        return out
+
+    def bow(d: ImageDraw.ImageDraw, cx: int, cy: int):
+        # nœud rose sur la tête
+        d.polygon([(cx, cy), (cx - 5, cy - 4), (cx - 5, cy + 4)], fill=(240, 60, 130, 255))
+        d.polygon([(cx, cy), (cx + 5, cy - 4), (cx + 5, cy + 4)], fill=(240, 60, 130, 255))
+        d.ellipse((cx - 2, cy - 2, cx + 2, cy + 2), fill=(255, 120, 170, 255))
+
+    def heart(d: ImageDraw.ImageDraw, x: int, y: int, s: int = 3):
+        d.ellipse((x - s, y - s, x, y), fill=(235, 40, 80, 255))
+        d.ellipse((x, y - s, x + s, y), fill=(235, 40, 80, 255))
+        d.polygon([(x - s, y - 1), (x + s, y - 1), (x, y + s + 1)], fill=(235, 40, 80, 255))
+
+    # --- moutonne (211-213) : marche rosée à nœud, puis cœur ---
+    for base in (walk2, tile_of(sheet, 3)):
+        t = on_canvas(rosy(base))
+        d = ImageDraw.Draw(t)
+        bow(d, 9, 6)
+        tiles.append(t)
+    t = on_canvas(rosy(side))
+    d = ImageDraw.Draw(t)
+    bow(d, 9, 6)
+    heart(d, 25, 6, 4)
+    tiles.append(t)
+
+    # --- agneaux (214-215) : les mêmes pas, en tout petit ---
+    for base in (walk2, tile_of(sheet, 3)):
+        t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+        lamb = base.resize((24, 24), Image.NEAREST)
+        t.alpha_composite(lamb, (8, TILE - 24))
+        tiles.append(t)
+
+    # --- love (216-217) : le mouton de face, des cœurs plein la tête ---
+    for phase in range(2):
+        t = on_canvas(front)
+        d = ImageDraw.Draw(t)
+        heart(d, 6 + phase * 3, 8 - phase * 3, 3)
+        heart(d, 33 - phase * 2, 6 + phase * 2, 4)
+        heart(d, 20, 3 - phase, 2)
+        tiles.append(t)
+
     return tiles
 
 
@@ -408,6 +464,31 @@ def build_animations() -> list[ET.Element]:
                  start=("0", "0", "340")),
         anim_xml(111, "umbrella", [209, 210],
                  start=("0", "0", "250"), repeat="4"),
+        # Le coup de foudre : il s'arrête, des cœurs plein la tête, pendant
+        # que la moutonne (enfant) traverse l'écran vers lui.
+        anim_xml(112, "love", [216, 217],
+                 start=("0", "0", "320"), repeat="10",
+                 nexts=(("100", None, "113"),)),
+        # La parade familiale : il repart, deux agneaux (enfants) trottinent
+        # derrière lui.
+        anim_xml(113, "family_walk", [2, 3],
+                 start=("-2", "0", "200"), repeat="30",
+                 nexts=(("100", None, "1"),),
+                 border=(("100", None, "2"),)),
+        # Chaîne de la moutonne (enfant) : traversée, cœur, sortie de scène.
+        anim_xml(120, "ewe_walk", [211, 212],
+                 start=("-3", "0", "180"), repeat="25",
+                 nexts=(("100", None, "121"),), gravity=None),
+        anim_xml(121, "ewe_heart", [213, 213],
+                 start=("0", "0", "320"), repeat="3",
+                 nexts=(("100", None, "122"),), gravity=None),
+        anim_xml(122, "ewe_leave", [211, 212],
+                 start=("-4", "0", "150"), repeat="60",
+                 nexts=(), gravity=None),
+        # Chaîne des agneaux (enfants) : ils suivent puis s'éclipsent.
+        anim_xml(130, "lamb_walk", [214, 215],
+                 start=("-2", "0", "190"), repeat="60",
+                 nexts=(), gravity=None),
     ]
 
 
@@ -415,7 +496,14 @@ def build_animations() -> list[ET.Element]:
 WALK_HOOKS = [
     (100, 4), (101, 3), (102, 2), (103, 3),
     (104, 3), (105, 4), (107, 2), (108, 2),
-    (109, 3),
+    (109, 3), (112, 2),
+]
+
+# Enfants : (animation déclencheuse, x, y, première animation de l'enfant).
+CHILD_HOOKS = [
+    (112, "screenW-45", "areaH-imageH", 120),
+    (113, "screenW+5", "areaH-imageH", 130),
+    (113, "screenW+45", "areaH-imageH", 130),
 ]
 
 
@@ -466,6 +554,14 @@ def main() -> None:
     ET.SubElement(spawn, q("x")).text = "random*(screenW-imageW-50)/100+25"
     ET.SubElement(spawn, q("y")).text = "-imageH"
     ET.SubElement(spawn, q("next")).text = "106"
+
+    # Enfants : la moutonne du coup de foudre, les agneaux de la parade.
+    childs = root.find(q("childs"))
+    for trigger, x, y, next_id in CHILD_HOOKS:
+        child = ET.SubElement(childs, q("child"), {"animationid": str(trigger)})
+        ET.SubElement(child, q("x")).text = x
+        ET.SubElement(child, q("y")).text = y
+        ET.SubElement(child, q("next")).text = str(next_id)
 
     out_dir = REPO / "assets/rustysheep"
     out_dir.mkdir(parents=True, exist_ok=True)

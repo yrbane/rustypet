@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.19.0 — 2026-08-04 · « La moutonne, les agneaux : le troupeau »
+
+RustyPet devient multi-pets : le format `<childs>` d'eSheep prend vie.
+
+- Moteur : nouveau `Flock` — le pet principal et ses enfants, chacun
+  cadencé à l'intervalle de sa propre animation (échéancier en
+  millisecondes, déterministe). Les enfants déclarés par une animation
+  naissent (`Pet::spawn_child`, position exprimée par le XML), se ferment
+  en fin de chaîne ou en sortant de l'écran, plafond de 6 enfants.
+- petd : `advance(elapsed)` retourne tous les acteurs ; le signal D-Bus
+  `PetState` devient un tableau `a(iiubu)`, le principal en tête.
+- Extension : un widget par acteur, créés et détruits au fil du signal.
+- petsim : trace du troupeau complet (colonnes « enfant » sur chaque ligne).
+- RustySheep : le coup de foudre — `love` (112, cœurs plein la tête)
+  fait entrer la **moutonne** (laine rosée, nœud, cils de sa démarche)
+  qui traverse l'écran vers lui, puis `family_walk` (113) fait trottiner
+  **deux agneaux** derrière le couple. Sept tuiles inédites (211-217).
+- Bonus : les scènes à deux moutons d'origine d'esheep64 (bain, mouton
+  noir) fonctionnent désormais aussi, leurs childs étant enfin honorés.
+
 ## 0.18.0 — 2026-08-04 · « Un petit nuage au-dessus de la tête »
 
 Trois animations météo pour RustySheep, toujours 100 % data-driven :

@@ -5,7 +5,7 @@ use pet_format::{decode_sheet, parse_pet};
 use std::collections::HashSet;
 
 /// Les gags inédits générés par `tools/make_rustysheep.py`.
-const GAGS: [&str; 12] = [
+const GAGS: [&str; 14] = [
     "dance",
     "smoke",
     "superman",
@@ -18,6 +18,8 @@ const GAGS: [&str; 12] = [
     "rain",
     "soaked",
     "umbrella",
+    "love",
+    "family_walk",
 ];
 
 fn xml() -> String {
@@ -71,6 +73,37 @@ fn chaque_gag_est_atteignable_depuis_un_spawn() {
     for name in GAGS {
         let id = pet.animation_id_by_name(name).expect("gag présent");
         assert!(seen.contains(&id), "gag inatteignable en jeu : {name}");
+    }
+}
+
+#[test]
+fn la_moutonne_et_les_agneaux_sont_declares() {
+    let pet = parse_pet(&xml()).expect("parse");
+    let love = pet.animation_id_by_name("love").expect("love présent");
+    let family = pet
+        .animation_id_by_name("family_walk")
+        .expect("family_walk présent");
+
+    let ewes: Vec<_> = pet
+        .childs
+        .iter()
+        .filter(|c| c.animation_id == love)
+        .collect();
+    assert_eq!(ewes.len(), 1, "le coup de foudre fait venir une moutonne");
+    let lambs: Vec<_> = pet
+        .childs
+        .iter()
+        .filter(|c| c.animation_id == family)
+        .collect();
+    assert_eq!(lambs.len(), 2, "la parade familiale compte deux agneaux");
+
+    // Chaque enfant démarre sur une animation existante.
+    for child in ewes.iter().chain(lambs.iter()) {
+        assert!(
+            pet.animation(child.next).is_some(),
+            "animation d'enfant inconnue : {}",
+            child.next
+        );
     }
 }
 
