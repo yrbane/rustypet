@@ -1,9 +1,9 @@
 //! Pilote du moteur, indépendant de D-Bus : charge un pet, le fait vivre pas à
 //! pas, et convertit chaque pas en une image affichable (`PetFrame`).
 
-use crate::cache::write_sprite_png;
+use crate::cache::{write_sound, write_sprite_png};
 use pet_engine::{Flock, Rect, SeededRng, World};
-use pet_format::{PetDefinition, decode_sheet, parse_pet};
+use pet_format::{PetDefinition, decode_sheet, decode_sound, parse_pet};
 use std::sync::Arc;
 
 /// Image à afficher pour un pas donné. Opacité sur 0–255 (échelle Clutter).
@@ -43,6 +43,8 @@ pub struct Engine {
     rng: SeededRng,
     world: World,
     flock: Option<Flock>,
+    /// Chemins des sons écrits en cache, alignés sur `definition.sounds`.
+    sound_paths: Vec<String>,
 }
 
 impl Engine {
@@ -54,6 +56,14 @@ impl Engine {
         let sheet = decode_sheet(&definition.image)?;
         let path = write_sprite_png(&definition.header.petname, &sheet)?;
 
+        // Sons du pet écrits en cache, prêts à être joués par l'extension.
+        let mut sound_paths = Vec::new();
+        for (index, sound) in definition.sounds.iter().enumerate() {
+            let bytes = decode_sound(sound)?;
+            let sound_path = write_sound(&definition.header.petname, index, &bytes)?;
+            sound_paths.push(sound_path.to_string_lossy().into_owned());
+        }
+
         Ok(Engine {
             definition,
             tile: (sheet.tile_w as i32, sheet.tile_h as i32),
@@ -63,6 +73,7 @@ impl Engine {
             // Monde provisoire, remplacé au premier configure.
             world: World::simple(1, 1),
             flock: None,
+            sound_paths,
         })
     }
 
@@ -113,6 +124,18 @@ impl Engine {
                 flipped: draw.flipped,
                 opacity: (draw.opacity.clamp(0.0, 1.0) * 255.0).round() as u32,
             })
+            .collect()
+    }
+
+    /// Chemins des sons tirés par le troupeau depuis le dernier appel.
+    pub fn take_sound_paths(&mut self) -> Vec<String> {
+        let Some(flock) = self.flock.as_mut() else {
+            return Vec::new();
+        };
+        flock
+            .take_sounds()
+            .iter()
+            .filter_map(|&index| self.sound_paths.get(index).cloned())
             .collect()
     }
 

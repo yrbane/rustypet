@@ -39,6 +39,14 @@ impl SpriteSheet {
     }
 }
 
+/// Décode les octets audio d'un `<sound>` (WAV ou MP3 selon le pet).
+pub fn decode_sound(sound: &crate::model::Sound) -> Result<Vec<u8>, FormatError> {
+    let padded = pad_base64(&sound.base64);
+    base64::engine::general_purpose::STANDARD
+        .decode(padded.replace(['\n', '\r', ' '], "").as_bytes())
+        .map_err(|e| FormatError::Base64(e.to_string()))
+}
+
 /// Ajoute le padding `=` manquant : beaucoup de pets ont un base64 non padé.
 pub fn pad_base64(input: &str) -> String {
     let mut s = input.to_string();

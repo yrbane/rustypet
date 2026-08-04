@@ -135,6 +135,7 @@ export default class RustyPetExtension extends Extension {
         // makeProxyWrapper ; sur un proxy nu, on écoute g-signal directement.
         this._signalId = this._proxy.connect('g-signal', (_p, _sender, name, params) => {
             if (name === 'PetState') this._onState(params.deepUnpack());
+            else if (name === 'PetSound') this._onSound(params.deepUnpack());
         });
 
         // Remonte la géométrie des fenêtres : le pet marche sur leurs toits.
@@ -270,6 +271,19 @@ export default class RustyPetExtension extends Extension {
             actor.scale_x = flipped ? -1 : 1;
             actor.opacity = clutterOpacity(opacity);
         });
+    }
+
+    // Joue un son du pet via l'API sonore de GNOME (respecte le mixeur et
+    // le mode silencieux). Les WAV sont pré-atténués à la génération.
+    _onSound(args) {
+        if (this._destroyed) return;
+        const [path] = args;
+        try {
+            const player = global.display.get_sound_player();
+            player.play_from_file(Gio.File.new_for_path(path), 'RustyPet', null);
+        } catch (e) {
+            logError(e, 'RustyPet: lecture du son');
+        }
     }
 
     disable() {

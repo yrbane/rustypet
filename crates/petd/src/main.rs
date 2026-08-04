@@ -47,10 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // à la cadence de la plus proche échéance d'animation.
     let mut elapsed: i64 = 0;
     loop {
-        let (actors, wait) = {
+        let (actors, sounds, wait) = {
             let mut engine = shared.lock().await;
             let frames = engine.advance(elapsed);
-            (frames, engine.interval_ms())
+            let sounds = engine.take_sound_paths();
+            (frames, sounds, engine.interval_ms())
         }; // mutex relâché avant de dormir
 
         let actors: Vec<(i32, i32, u32, bool, u32)> = actors
@@ -59,6 +60,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
         let emitter = iface.signal_emitter();
         PetService::pet_state(emitter, actors).await?;
+        for path in sounds {
+            let emitter = iface.signal_emitter();
+            PetService::pet_sound(emitter, path).await?;
+        }
 
         elapsed = wait as i64;
         sleep(Duration::from_millis(wait)).await;

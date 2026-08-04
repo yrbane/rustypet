@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.21.0 — 2026-08-04 · « Bêê. (discrètement) »
+
+Le mouton a une voix — mais il ne s'en sert pas pour hurler.
+
+- Moteur : au démarrage d'une animation, tirage des `<sound>` associés
+  selon leur probabilité (`Pet::take_sound`, agrégé par `Flock`). Les pets
+  du corpus sans sons gardent des traces strictement identiques ; le neko,
+  qui en a, voit sa trace décalée d'un tirage (snapshot mis à jour).
+- pet-format : `decode_sound` (base64 → octets audio).
+- petd : les sons sont écrits en cache (`sound-<i>.wav`) au chargement ;
+  nouveau signal D-Bus `PetSound(s)` avec le chemin du fichier.
+- Extension : lecture via `global.display.get_sound_player()` — l'API
+  sonore native de GNOME, qui respecte le mixeur du système.
+- RustySheep : bêlement emprunté au blue_sheep du corpus, converti en WAV
+  mono et **atténué à 18 % d'amplitude** à la génération (ffmpeg). Accroché
+  au coup de foudre (probabilité 70), au parachute (40) et à
+  l'atterrissage (8). Un test verrouille la discrétion : pic PCM < 30 %
+  de l'échelle.
+
 ## 0.20.0 — 2026-08-04 · « Attrape-moi si tu peux »
 
 Le glisser-déposer à la souris : on attrape le pet principal, il gigote

@@ -64,6 +64,8 @@ pub struct Pet {
     is_child: bool,
     /// Animations dont les enfants restent à créer.
     pending_children: Vec<i32>,
+    /// Son tiré au démarrage de l'animation courante, à consommer.
+    pending_sound: Option<usize>,
     /// Animation courante, expressions déjà évaluées.
     cache: Option<pet_format::Animation>,
 }
@@ -107,6 +109,7 @@ impl Pet {
             on_window: None,
             is_child: false,
             pending_children: Vec::new(),
+            pending_sound: None,
             cache: None,
         }
     }
@@ -156,6 +159,12 @@ impl Pet {
     /// Récupère et vide la liste des enfants à créer.
     pub fn pending_children(&mut self) -> Vec<i32> {
         std::mem::take(&mut self.pending_children)
+    }
+
+    /// Le son tiré au démarrage de l'animation courante, une seule fois
+    /// (index dans `definition.sounds`).
+    pub fn take_sound(&mut self) -> Option<usize> {
+        self.pending_sound.take()
     }
 
     /// Fait apparaître le pet à un point d'apparition tiré au sort.
@@ -245,6 +254,14 @@ impl Pet {
         // Cette animation crée-t-elle des enfants ?
         if self.definition.childs.iter().any(|c| c.animation_id == id) {
             self.pending_children.push(id);
+        }
+
+        // Un son lui est-il associé ? Tirage à chaque démarrage (§5.4).
+        for (index, sound) in self.definition.sounds.iter().enumerate() {
+            if sound.animation_id == id && rng.gen_range_i32(0, 100) < sound.probability {
+                self.pending_sound = Some(index);
+                break;
+            }
         }
 
         self.cache = Some(animation);
@@ -605,6 +622,49 @@ mod tests {
         let (x, y) = pet.position();
         assert_eq!(x, 400 - 16); // curseur - largeur/2
         assert_eq!(y, 300 - 2);
+    }
+
+    #[test]
+    fn un_son_certain_est_tire_au_demarrage_de_son_animation() {
+        // Même pet que XML, avec un bêlement certain sur la marche (id 1)
+        // et un son impossible sur le demi-tour (id 2).
+        let xml_sons = XML.replace(
+            "<childs/>",
+            r#"<childs/>
+            <sounds>
+              <sound animationid="1"><probability>100</probability><base64>QUJD</base64></sound>
+              <sound animationid="2"><probability>0</probability><base64>REVG</base64></sound>
+            </sounds>"#,
+        );
+        let def = Arc::new(parse_pet(&xml_sons).expect("parsing"));
+        let world = World::simple(800, 600);
+        let mut pet = Pet::new(def, (32, 32), &world);
+        let mut rng = SeededRng::new(7);
+
+        // Le spawn démarre la marche : son 0 tiré, puis plus rien.
+        pet.spawn(&world, &mut rng);
+        assert_eq!(pet.take_sound(), Some(0), "le bêlement certain doit partir");
+        assert_eq!(pet.take_sound(), None, "un son ne part qu'une fois");
+    }
+
+    #[test]
+    fn un_son_improbable_ne_part_jamais() {
+        let xml_sons = XML.replace(
+            "<childs/>",
+            r#"<childs/>
+            <sounds>
+              <sound animationid="1"><probability>0</probability><base64>QUJD</base64></sound>
+            </sounds>"#,
+        );
+        let def = Arc::new(parse_pet(&xml_sons).expect("parsing"));
+        let world = World::simple(800, 600);
+        let mut pet = Pet::new(def, (32, 32), &world);
+        let mut rng = SeededRng::new(7);
+        pet.spawn(&world, &mut rng);
+        for _ in 0..50 {
+            pet.tick(&world, &mut rng);
+            assert_eq!(pet.take_sound(), None, "probabilité 0 : silence");
+        }
     }
 
     #[test]

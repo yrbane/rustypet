@@ -110,6 +110,15 @@ impl Flock {
         self.actors.iter().map(|s| s.pet.animation_id()).collect()
     }
 
+    /// Les sons tirés par le troupeau depuis le dernier appel (index dans
+    /// `definition.sounds`).
+    pub fn take_sounds(&mut self) -> Vec<usize> {
+        self.actors
+            .iter_mut()
+            .filter_map(|s| s.pet.take_sound())
+            .collect()
+    }
+
     /// Délai avant la prochaine échéance, en millisecondes (au moins 1).
     pub fn next_wait_ms(&self) -> i64 {
         self.actors

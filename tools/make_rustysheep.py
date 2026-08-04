@@ -14,7 +14,9 @@ import colorsys
 import io
 import math
 import re
+import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -506,6 +508,35 @@ CHILD_HOOKS = [
     (113, "screenW+45", "areaH-imageH", 130),
 ]
 
+# Sons : (animation, probabilité). Bêlement discret — amplitude réduite.
+SOUND_HOOKS = [(112, 70), (106, 40), (10, 8)]
+SOUND_VOLUME = 0.18
+BLUE_SHEEP = Path.home() / "Dev/desktopPet/Pets/blue_sheep/animations.xml"
+
+
+def make_quiet_baa() -> str:
+    """Extrait le bêlement de blue_sheep et le rend discret : MP3 d'origine
+    décodé par ffmpeg, volume réduit, WAV mono 16 bits (le seul format que
+    l'API sonore de GNOME lit à coup sûr). Retourne le base64."""
+    xml = BLUE_SHEEP.read_text()
+    m = re.search(r"<sound[^>]*>.*?<base64>([^<]+)</base64>", xml, re.S)
+    if not m:
+        raise SystemExit("aucun son dans blue_sheep")
+    b64 = re.sub(r"\s+", "", m.group(1))
+    mp3 = base64.b64decode(b64 + "=" * (-len(b64) % 4))
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "baa.mp3"
+        dst = Path(tmp) / "baa.wav"
+        src.write_bytes(mp3)
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-y", "-i", str(src),
+             "-af", f"volume={SOUND_VOLUME}", "-ac", "1", "-ar", "22050",
+             "-sample_fmt", "s16", "-map_metadata", "-1",
+             "-fflags", "+bitexact", "-flags:a", "+bitexact", str(dst)],
+            check=True,
+        )
+        return base64.b64encode(dst.read_bytes()).decode()
+
 
 def main() -> None:
     src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SRC
@@ -562,6 +593,16 @@ def main() -> None:
         ET.SubElement(child, q("x")).text = x
         ET.SubElement(child, q("y")).text = y
         ET.SubElement(child, q("next")).text = str(next_id)
+
+    # Sons : le même bêlement discret, accroché à plusieurs animations.
+    baa = make_quiet_baa()
+    sounds = root.find(q("sounds"))
+    if sounds is None:
+        sounds = ET.SubElement(root, q("sounds"))
+    for anim_id, probability in SOUND_HOOKS:
+        sound = ET.SubElement(sounds, q("sound"), {"animationid": str(anim_id)})
+        ET.SubElement(sound, q("probability")).text = str(probability)
+        ET.SubElement(sound, q("base64")).text = baa
 
     out_dir = REPO / "assets/rustysheep"
     out_dir.mkdir(parents=True, exist_ok=True)

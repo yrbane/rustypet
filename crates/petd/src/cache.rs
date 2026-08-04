@@ -47,6 +47,16 @@ pub fn slugify(name: &str) -> String {
     }
 }
 
+/// Écrit un son décodé sous `<cache>/<slug>/sound-<index>.wav`, et retourne
+/// son chemin. L'extension le lit via l'API sonore de GNOME.
+pub fn write_sound(pet_name: &str, index: usize, bytes: &[u8]) -> std::io::Result<PathBuf> {
+    let dir = cache_dir().join(slugify(pet_name));
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("sound-{index}.wav"));
+    std::fs::write(&path, bytes)?;
+    Ok(path)
+}
+
 /// Écrit le RGBA du spritesheet en PNG sous `<cache>/<slug>/sheet.png`.
 pub fn write_sprite_png(pet_name: &str, sheet: &SpriteSheet) -> std::io::Result<PathBuf> {
     let dir = cache_dir().join(slugify(pet_name));

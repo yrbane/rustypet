@@ -75,4 +75,9 @@ impl PetService {
         emitter: &SignalEmitter<'_>,
         actors: Vec<(i32, i32, u32, bool, u32)>,
     ) -> zbus::Result<()>;
+
+    /// Émis quand une animation tire son son : chemin d'un WAV en cache,
+    /// que l'extension joue via l'API sonore de GNOME.
+    #[zbus(signal)]
+    pub async fn pet_sound(emitter: &SignalEmitter<'_>, path: String) -> zbus::Result<()>;
 }

@@ -1,7 +1,7 @@
 //! Le pet RustySheep embarqué dans le dépôt : les gags demandés existent,
 //! sont atteignables en jeu, et la spritesheet étendue couvre leurs frames.
 
-use pet_format::{decode_sheet, parse_pet};
+use pet_format::{decode_sheet, decode_sound, parse_pet};
 use std::collections::HashSet;
 
 /// Les gags inédits générés par `tools/make_rustysheep.py`.
@@ -104,6 +104,30 @@ fn la_moutonne_et_les_agneaux_sont_declares() {
             "animation d'enfant inconnue : {}",
             child.next
         );
+    }
+}
+
+#[test]
+fn le_mouton_a_des_bêlements_discrets() {
+    let pet = parse_pet(&xml()).expect("parse");
+    assert!(!pet.sounds.is_empty(), "le mouton doit avoir des sons");
+    for sound in &pet.sounds {
+        assert!(
+            pet.animation(sound.animation_id).is_some(),
+            "son accroché à l'animation inconnue {}",
+            sound.animation_id
+        );
+        let bytes = decode_sound(sound).expect("le son doit se décoder");
+        assert_eq!(&bytes[..4], b"RIFF", "le son doit être un WAV");
+
+        // Discrétion demandée : le pic d'amplitude PCM 16 bits reste sous
+        // ~30 % de l'échelle (l'original est proche de la saturation).
+        let peak = bytes[44..]
+            .chunks_exact(2)
+            .map(|c| i16::from_le_bytes([c[0], c[1]]).unsigned_abs())
+            .max()
+            .unwrap_or(0);
+        assert!(peak < 10_000, "bêlement trop fort : pic {peak}");
     }
 }
 
