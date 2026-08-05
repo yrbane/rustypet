@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/pet-expr", "crates/pet-format", "crates/pet-engine", "crates/petsim", "crates/petd"]
 
 [workspace.package]
-version = "0.22.1"
+version = "0.22.2"
 edition = "2024"
 rust-version = "1.97"
 license = "MIT"

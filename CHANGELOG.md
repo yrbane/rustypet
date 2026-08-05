@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.22.2 — 2026-08-05 · « Le retour du mouton noir »
+
+Les scènes d'origine à deux moutons se jouaient hors écran : corrigé.
+
+- Les `<child>` d'esheep64 se placent avec `imageX`/`imageY` — la position
+  du pet déclencheur — que le moteur laissait à -1. Le mouton noir entrait
+  donc à y=-1 (tronqué en haut de l'écran) et la fleur du broutage poussait
+  à (-37, -1).
+- Le moteur maintient désormais `imageX`/`imageY` à la position courante
+  du pet, et la position d'un enfant est résolue **dans le contexte du
+  parent** au moment de la naissance (`Pet::resolve_child_spawn` +
+  `spawn_at`), sous test (`l_enfant_se_place_par_rapport_au_parent`).
+- Vérifié en simulation (graine 145) : le mouton noir entre par la gauche
+  au niveau du sol avec ses tuiles d'origine, les deux moutons marchent
+  l'un vers l'autre, s'affrontent, puis le noir s'éclipse. La fleur du
+  broutage pousse à côté du mouton.
+
 ## 0.22.1 — 2026-08-05 · « Plus rien ne dépasse (ni ne manque) »
 
 Correctif visuel des tuiles RustySheep composées :

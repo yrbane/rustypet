@@ -206,23 +206,35 @@ impl Pet {
         self.set_animation(next, world, rng);
     }
 
-    /// Fait apparaître ce pet comme enfant : position déclarée par le
-    /// `<child>`, fermeture (au lieu du respawn) en fin de chaîne (§5.3).
-    pub fn spawn_child(&mut self, child: &pet_format::Child, world: &World, rng: &mut dyn PetRng) {
-        self.is_child = true;
-        self.ctx.rand_spawn = rng.gen_range_i32(10, 90);
+    /// Évalue, dans le contexte de CE pet (le parent : sa position nourrit
+    /// `imageX`/`imageY`), la position d'apparition d'un `<child>` (§5.3).
+    pub fn resolve_child_spawn(
+        &mut self,
+        child: &pet_format::Child,
+        world: &World,
+        rng: &mut dyn PetRng,
+    ) -> (i32, i32) {
         self.refresh_context(world);
-
         let mut child = child.clone();
         child.x.update(&self.ctx, rng, false);
         child.y.update(&self.ctx, rng, false);
-        self.position_x = world.bounds.x + child.x.get();
-        self.position_y = world.bounds.y + child.y.get();
+        (
+            world.bounds.x + child.x.get(),
+            world.bounds.y + child.y.get(),
+        )
+    }
+
+    /// Fait apparaître ce pet comme enfant à une position déjà résolue :
+    /// fermeture (au lieu du respawn) en fin de chaîne (§5.3).
+    pub fn spawn_at(&mut self, x: i32, y: i32, next: i32, world: &World, rng: &mut dyn PetRng) {
+        self.is_child = true;
+        self.ctx.rand_spawn = rng.gen_range_i32(10, 90);
+        self.position_x = x;
+        self.position_y = y;
         self.offset_y = 0;
         self.opacity = 1.0;
         self.on_window = None;
-
-        self.set_animation(child.next, world, rng);
+        self.set_animation(next, world, rng);
     }
 
     /// Démarre une animation. Le premier tick portera le pas 0.
@@ -268,6 +280,8 @@ impl Pet {
     }
 
     /// Met à jour le contexte d'évaluation avec la géométrie courante.
+    /// `imageX`/`imageY` valent la position du pet (§3.1) : les enfants et
+    /// les expressions d'animation se placent par rapport à lui.
     fn refresh_context(&mut self, world: &World) {
         self.ctx.screen_w = world.bounds.w;
         self.ctx.screen_h = world.bounds.h;
@@ -275,6 +289,8 @@ impl Pet {
         self.ctx.area_h = world.area.bottom();
         self.ctx.image_w = self.tile_w;
         self.ctx.image_h = self.tile_h;
+        self.ctx.image_x = self.position_x;
+        self.ctx.image_y = self.position_y;
     }
 
     /// Le pet est attrapé à la souris.

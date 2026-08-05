@@ -49,7 +49,10 @@ impl Flock {
     /// échéance avancent d'un pas, les enfants finis disparaissent, les
     /// enfants annoncés naissent.
     pub fn advance(&mut self, world: &World, rng: &mut dyn PetRng, elapsed_ms: i64) {
-        let mut births: Vec<i32> = Vec::new();
+        // (x, y, première animation) des enfants à faire naître : la
+        // position est résolue tout de suite, dans le contexte du parent
+        // déclencheur (imageX/imageY = sa position à cet instant).
+        let mut births: Vec<(i32, i32, i32)> = Vec::new();
 
         let mut index = 0;
         while index < self.actors.len() {
@@ -61,7 +64,17 @@ impl Flock {
             }
             let outcome = slot.pet.tick(world, rng);
             slot.due_ms = i64::from(slot.pet.interval_ms());
-            births.extend(slot.pet.pending_children());
+            for animation_id in slot.pet.pending_children() {
+                for child in self
+                    .definition
+                    .childs
+                    .iter()
+                    .filter(|c| c.animation_id == animation_id)
+                {
+                    let (x, y) = slot.pet.resolve_child_spawn(child, world, rng);
+                    births.push((x, y, child.next));
+                }
+            }
             match outcome {
                 TickOutcome::Close => {
                     self.actors.remove(index);
@@ -75,27 +88,12 @@ impl Flock {
             }
         }
 
-        for animation_id in births {
-            self.hatch(animation_id, world, rng);
-        }
-    }
-
-    /// Crée les enfants déclarés pour cette animation, dans la limite du
-    /// plafond.
-    fn hatch(&mut self, animation_id: i32, world: &World, rng: &mut dyn PetRng) {
-        let childs: Vec<pet_format::Child> = self
-            .definition
-            .childs
-            .iter()
-            .filter(|c| c.animation_id == animation_id)
-            .cloned()
-            .collect();
-        for child in childs {
+        for (x, y, next) in births {
             if self.actors.len() > MAX_CHILDREN {
-                return;
+                break;
             }
             let mut pet = Pet::new(Arc::clone(&self.definition), self.tile, world);
-            pet.spawn_child(&child, world, rng);
+            pet.spawn_at(x, y, next, world, rng);
             self.actors.push(Slot { pet, due_ms: 0 });
         }
     }
@@ -256,6 +254,54 @@ mod tests {
             flock.advance(&world, &mut rng, 50);
         }
         assert_eq!(flock.len(), 1, "l'enfant fini doit se fermer");
+    }
+
+    /// L'enfant se place par rapport au parent : `imageX`/`imageY` sont la
+    /// position courante du déclencheur (le mouton noir entre à sa hauteur,
+    /// la fleur pousse à côté de lui).
+    const XML_ENFANT_RELATIF: &str = r#"
+    <animations>
+      <header><author>a</author><title>t</title><petname>p</petname>
+        <version>1</version><info>i</info><application>1</application><icon>x</icon></header>
+      <image><tilesx>2</tilesx><tilesy>1</tilesy><png>AAAA</png></image>
+      <spawns><spawn id="1" probability="100"><x>100</x><y>200</y><next>3</next></spawn></spawns>
+      <animations>
+        <animation id="3">
+          <name>meet</name>
+          <start><x>0</x><y>0</y><interval>100</interval></start>
+          <sequence repeat="0" repeatfrom="0"><frame>0</frame>
+            <next probability="100">1</next></sequence>
+        </animation>
+        <animation id="1">
+          <name>walk</name>
+          <start><x>0</x><y>0</y><interval>100</interval></start>
+          <sequence repeat="0" repeatfrom="0"><frame>0</frame><frame>1</frame>
+            <next probability="100">1</next></sequence>
+          <border><next probability="100">1</next></border>
+        </animation>
+        <animation id="5">
+          <name>child_walk</name>
+          <start><x>0</x><y>0</y><interval>50</interval></start>
+          <sequence repeat="0" repeatfrom="0"><frame>0</frame><frame>1</frame></sequence>
+        </animation>
+      </animations>
+      <childs>
+        <child animationid="3"><x>imageX+50</x><y>imageY</y><next>5</next></child>
+      </childs>
+    </animations>"#;
+
+    #[test]
+    fn l_enfant_se_place_par_rapport_au_parent() {
+        let (mut flock, world, mut rng) = flock_from(XML_ENFANT_RELATIF);
+        flock.spawn(&world, &mut rng);
+        flock.advance(&world, &mut rng, 0);
+        assert_eq!(flock.len(), 2);
+        let draws = flock.draws();
+        assert_eq!(
+            (draws[1].x, draws[1].y),
+            (draws[0].x + 50, draws[0].y),
+            "imageX/imageY doivent valoir la position du parent"
+        );
     }
 
     #[test]
