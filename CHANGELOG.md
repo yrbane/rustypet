@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.22.1 — 2026-08-05 · « Plus rien ne dépasse (ni ne manque) »
+
+Correctif visuel des tuiles RustySheep composées :
+
+- Les rotations (danse, superman) rognaient les coins du sprite
+  (`expand=False`) : rotation désormais sans perte — étendue, recadrée sur
+  les pixels opaques, remise à l'échelle dans la tuile.
+- Le parachute était décapité : la calotte était dessinée au-dessus du bord
+  de la tuile (y = -6). La voilure complète, les suspentes et le mouton
+  tiennent maintenant dans les 40 px.
+- La fusée était minuscule : elle occupe désormais toute la hauteur de la
+  tuile (corps large, ailerons, hublot, flammes contenues), mouton bien
+  visible au sommet.
+- Les volutes de fumée ne débordent plus du haut de la tuile.
+- Capture des vitrines régénérée.
+
 ## 0.22.0 — 2026-08-04 · « Le mouton voyage »
 
 Builds multi-plateformes publiés automatiquement sur chaque release.

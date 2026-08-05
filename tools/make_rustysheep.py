@@ -63,7 +63,23 @@ def on_canvas(sprite: Image.Image, dx: int = 0, dy: int = 0) -> Image.Image:
 
 
 def rotated(sprite: Image.Image, angle: float) -> Image.Image:
-    return sprite.rotate(angle, resample=Image.NEAREST, expand=False)
+    """Rotation sans perte : le sprite tourné est étendu puis recadré sur ses
+    pixels opaques et remis à l'échelle si besoin — rien n'est rogné."""
+    turned = sprite.rotate(angle, resample=Image.NEAREST, expand=True)
+    box = turned.getbbox()
+    if box:
+        turned = turned.crop(box)
+    if turned.width > TILE or turned.height > TILE:
+        ratio = min(TILE / turned.width, TILE / turned.height)
+        turned = turned.resize(
+            (max(1, round(turned.width * ratio)), max(1, round(turned.height * ratio))),
+            Image.NEAREST,
+        )
+    canvas = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+    canvas.alpha_composite(
+        turned, ((TILE - turned.width) // 2, (TILE - turned.height) // 2)
+    )
+    return canvas
 
 
 def note(draw: ImageDraw.ImageDraw, x: int, y: int, color=(40, 40, 220, 255)):
@@ -116,28 +132,31 @@ def build_tiles(sheet: Image.Image) -> list[Image.Image]:
         d.line((22, 25, 29, 21), fill=(245, 245, 235, 255), width=2)
         d.point((29, 21), fill=(255, 120, 30, 255))
         d.point((30, 20), fill=(255, 60, 20, 255))
-        # volutes grises de plus en plus hautes
+        # volutes grises de plus en plus hautes, sans déborder de la tuile
         for k in range(i + 1):
             r = 2 + k
-            cx, cy = 31 + (k % 2) * 2, 16 - k * 5
+            cx, cy = 31 + (k % 2) * 2, 17 - k * 4
             d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(190, 190, 200, 180))
         tiles.append(t)
 
     # --- superman (184-185) : cape rouge, envol en diagonale ---
-    flying = walk2.resize((30, 30), Image.NEAREST)
+    fly = walk2.rotate(32, resample=Image.NEAREST, expand=True)
+    fly = fly.crop(fly.getbbox())
+    fly.thumbnail((30, 30), Image.NEAREST)
     for flap in (0, 4):
         t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
         d = ImageDraw.Draw(t)
-        # cape qui flotte derrière le corps (il vole vers la gauche/haut)
+        # cape qui flotte derrière le corps (il vole vers la gauche/haut) ;
+        # dessinée d'abord, elle dépasse du flanc droit sans être rognée
         d.polygon(
-            [(20, 16), (39, 24 + flap), (37, 32 + flap), (18, 24)],
+            [(18, 14), (39, 22 + flap), (37, 30 + flap), (16, 22)],
             fill=(210, 30, 30, 255),
         )
         d.polygon(
-            [(21, 18), (36, 25 + flap), (35, 28 + flap), (20, 22)],
+            [(19, 16), (36, 23 + flap), (35, 26 + flap), (18, 20)],
             fill=(240, 60, 50, 255),
         )
-        t.alpha_composite(on_canvas(rotated(flying, 32), -4, 2))
+        t.alpha_composite(fly, (0, 4))
         tiles.append(t)
 
     # --- poop (186-188) : accroupi, petite crotte, fierté ---
@@ -198,45 +217,45 @@ def build_tiles(sheet: Image.Image) -> list[Image.Image]:
     d.line((36, 39, 36, 35), fill=(30, 140, 40, 255), width=2)
     tiles.append(last)
 
-    # --- parachute (196-197) : suspendu, balancement ---
-    small = front.resize((22, 22), Image.NEAREST)
+    # --- parachute (196-197) : suspendu, balancement — tout tient dans la
+    # tuile : calotte en haut, suspentes, mouton en bas ---
+    small = front.resize((18, 18), Image.NEAREST)
     for sway in (-2, 2):
         t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
         d = ImageDraw.Draw(t)
         cx = 20 + sway
-        # voilure rayée rouge/blanc
-        d.pieslice((cx - 16, -6, cx + 16, 16), 180, 360, fill=(220, 50, 50, 255))
-        for k in (-10, 0, 10):
-            d.pieslice((cx + k - 4, -6, cx + k + 4, 16), 180, 360, fill=(245, 245, 245, 255))
-        # suspentes
-        d.line((cx - 14, 6, 20 - sway, 20), fill=(80, 80, 80, 255), width=1)
-        d.line((cx + 14, 6, 20 - sway + 8, 20), fill=(80, 80, 80, 255), width=1)
-        t.alpha_composite(small, (9 - sway, 18))
+        # voilure : dôme complet (y = 2 à 12), rayures blanches
+        d.pieslice((cx - 16, 2, cx + 16, 22), 180, 360, fill=(220, 50, 50, 255))
+        for k in (-9, 0, 9):
+            d.pieslice((cx + k - 4, 4, cx + k + 4, 22), 180, 360,
+                       fill=(245, 245, 245, 255))
+        # suspentes, des bords de la voilure aux épaules du mouton
+        sx = 20 - sway
+        d.line((cx - 15, 12, sx + 3, 22), fill=(80, 80, 80, 255), width=1)
+        d.line((cx + 15, 12, sx + 15, 22), fill=(80, 80, 80, 255), width=1)
+        t.alpha_composite(small, (sx + 1, 21))
         tiles.append(t)
 
-    # --- rocket (198-200) : allumage puis décollage ---
-    tiny = front.resize((18, 18), Image.NEAREST)
+    # --- rocket (198-200) : allumage puis décollage — la fusée occupe
+    # toute la hauteur de la tuile, flammes comprises ---
+    tiny = front.resize((22, 22), Image.NEAREST)
     for stage in range(3):
         t = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
         d = ImageDraw.Draw(t)
-        # corps de fusée
-        d.rectangle((14, 16, 26, 34), fill=(200, 200, 210, 255))
-        d.polygon([(14, 16), (26, 16), (20, 8)], fill=(210, 30, 30, 255))
-        d.polygon([(14, 34), (10, 39), (14, 28)], fill=(210, 30, 30, 255))
-        d.polygon([(26, 34), (30, 39), (26, 28)], fill=(210, 30, 30, 255))
-        d.ellipse((17, 20, 23, 26), fill=(90, 160, 220, 255))
-        # le mouton dépasse du sommet
-        t.alpha_composite(tiny, (11, 0))
+        # corps large, nez rouge, ailerons, hublot
+        d.polygon([(11, 14), (29, 14), (20, 4)], fill=(210, 30, 30, 255))
+        d.rectangle((11, 14, 29, 33), fill=(200, 200, 210, 255))
+        d.line((11, 14, 11, 33), fill=(150, 150, 165, 255), width=2)
+        d.polygon([(11, 33), (4, 39), (11, 25)], fill=(210, 30, 30, 255))
+        d.polygon([(29, 33), (36, 39), (29, 25)], fill=(210, 30, 30, 255))
+        d.ellipse((15, 18, 25, 28), fill=(90, 160, 220, 255))
+        d.ellipse((17, 20, 23, 26), fill=(140, 200, 245, 255))
+        # le mouton dépasse fièrement du sommet
+        t.alpha_composite(tiny, (9, 0))
         if stage >= 1:
-            f = 4 if stage == 1 else 8
-            d.polygon(
-                [(16, 34), (24, 34), (20, 34 + f)],
-                fill=(255, 160, 30, 255),
-            )
-            d.polygon(
-                [(18, 34), (22, 34), (20, 34 + f - 2)],
-                fill=(255, 240, 80, 255),
-            )
+            f = 3 if stage == 1 else 6
+            d.polygon([(13, 33), (27, 33), (20, 33 + f)], fill=(255, 160, 30, 255))
+            d.polygon([(16, 33), (24, 33), (20, 32 + f)], fill=(255, 240, 80, 255))
         tiles.append(t)
 
     # --- outils pluie : nuage, gouttes, mouton mouillé ---
