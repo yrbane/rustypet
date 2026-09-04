@@ -4,7 +4,7 @@
 //! reproductible à graine égale.
 
 use clap::Parser;
-use pet_engine::{Pet, SeededRng, TickOutcome, World};
+use pet_engine::{Flock, Rect, SeededRng, World};
 use pet_format::{decode_sheet, parse_pet};
 use std::sync::Arc;
 
@@ -25,6 +25,21 @@ struct Args {
     /// Hauteur de l'écran simulé
     #[arg(long, default_value_t = 1080)]
     height: i32,
+    /// Fenêtre simulée « x,y,largeur,hauteur » (répétable)
+    #[arg(long = "window", value_parser = parse_rect)]
+    windows: Vec<Rect>,
+}
+
+/// Lit un rectangle « x,y,l,h » depuis la ligne de commande.
+fn parse_rect(s: &str) -> Result<Rect, String> {
+    let parts: Vec<i32> = s
+        .split(',')
+        .map(|p| p.trim().parse().map_err(|e| format!("{e}")))
+        .collect::<Result<_, _>>()?;
+    match parts[..] {
+        [x, y, w, h] => Ok(Rect::new(x, y, w, h)),
+        _ => Err(format!("attendu « x,y,largeur,hauteur », reçu « {s} »")),
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,34 +59,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         definition.animations.len()
     );
 
-    let world = World::simple(args.width, args.height);
+    let mut world = World::simple(args.width, args.height);
+    world.windows = args.windows.clone();
     let mut rng = SeededRng::new(args.seed);
-    let mut pet = Pet::new(
+    let mut flock = Flock::new(
         definition,
         (sheet.tile_w as i32, sheet.tile_h as i32),
         &world,
     );
-    pet.spawn(&world, &mut rng);
+    flock.spawn(&world, &mut rng);
 
-    let mut respawns = 0;
+    // Le temps simulé avance d'échéance en échéance, comme le démon.
+    let mut elapsed = 0;
     for tick in 0..args.ticks {
-        let outcome = pet.tick(&world, &mut rng);
-        let draw = pet.draw();
-        println!(
-            "{tick:04} frame={:3} x={:5} y={:5} opacite={:.2} miroir={} attente={}ms",
-            draw.frame,
-            draw.x,
-            draw.y,
-            draw.opacity,
-            draw.flipped,
-            pet.interval_ms()
+        flock.advance(&world, &mut rng, elapsed);
+        let draws = flock.draws();
+        let ids = flock.animation_ids();
+        let main = draws[0];
+        print!(
+            "{tick:04} anim={:3} frame={:3} x={:5} y={:5} opacite={:.2} miroir={} attente={}ms",
+            ids[0],
+            main.frame,
+            main.x,
+            main.y,
+            main.opacity,
+            main.flipped,
+            flock.next_wait_ms()
         );
-        if outcome == TickOutcome::Respawn {
-            respawns += 1;
-            pet.spawn(&world, &mut rng);
+        // Les enfants du troupeau, à la suite sur la même ligne.
+        for (draw, id) in draws.iter().zip(ids.iter()).skip(1) {
+            print!(" | enfant anim={} x={} y={}", id, draw.x, draw.y);
         }
+        println!();
+        elapsed = flock.next_wait_ms();
     }
 
-    println!("# réapparitions={respawns}");
     Ok(())
 }

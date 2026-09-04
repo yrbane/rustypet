@@ -1,0 +1,7 @@
+{
+    "uuid": "rustypet@yrbane.dev",
+    "name": "RustyPet",
+    "description": "Affiche un animal de bureau animé, piloté par le démon petd.",
+    "shell-version": [ "50" ],
+    "url": "https://github.com/yrbane/rustypet"
+}

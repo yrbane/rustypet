@@ -1,0 +1,123 @@
+# Builds multi-plateformes attachés à la release du tag.
+#
+# Périmètre honnête : le pet à l'écran (petd + extension GNOME Shell) est
+# Linux/GNOME par nature. Ce qui voyage partout, c'est petsim, le simulateur
+# headless (Rust pur) : Linux x86_64/ARM64, Windows, macOS universel,
+# Android ARM64 (Termux). petd est fourni pour Linux x86_64 et ARM64.
+#
+# `workflow_dispatch` permet de relancer les builds d'un tag sans retaguer.
+name: Release multi-plateforme
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag à builder (ex. v0.22.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: dtolnay/rust-toolchain@1.97
+      - name: Outillage croisé ARM64
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          sudo apt-get update -q && sudo apt-get install -y -q gcc-aarch64-linux-gnu
+      - name: Build x86_64 (petd + petsim)
+        run: cargo build --release -p petd -p petsim
+      - name: Build ARM64 (petd + petsim)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: cargo build --release -p petd -p petsim --target aarch64-unknown-linux-gnu
+      - name: Publication sur la release
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          tar -C target/release -czf "rustypet-linux-x86_64-$TAG.tar.gz" petd petsim
+          tar -C target/aarch64-unknown-linux-gnu/release \
+            -czf "rustypet-linux-aarch64-$TAG.tar.gz" petd petsim
+          # La release est créée juste après le push du tag : petite marge.
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" rustypet-linux-*.tar.gz --clobber && break
+            sleep 30
+          done
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: dtolnay/rust-toolchain@1.97
+      - name: Build petsim ARM64 Android (NDK)
+        run: |
+          rustup target add aarch64-linux-android
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"
+          cargo build --release -p petsim --target aarch64-linux-android
+      - name: Publication sur la release
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          tar -C target/aarch64-linux-android/release \
+            -czf "rustypet-android-aarch64-$TAG.tar.gz" petsim
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" "rustypet-android-aarch64-$TAG.tar.gz" --clobber && break
+            sleep 30
+          done
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: dtolnay/rust-toolchain@1.97
+      - name: Build petsim
+        run: cargo build --release -p petsim
+      - name: Publication sur la release
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.tag || github.ref_name }}'
+          Compress-Archive -Path target/release/petsim.exe `
+            -DestinationPath "rustypet-windows-x86_64-$tag.zip" -Force
+          foreach ($i in 1..5) {
+            gh release upload $tag "rustypet-windows-x86_64-$tag.zip" --clobber
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 30
+          }
+          exit $LASTEXITCODE
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: dtolnay/rust-toolchain@1.97
+      - name: Build petsim universel (Apple Silicon + Intel)
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          cargo build --release -p petsim --target aarch64-apple-darwin
+          cargo build --release -p petsim --target x86_64-apple-darwin
+          lipo -create -output petsim \
+            target/aarch64-apple-darwin/release/petsim \
+            target/x86_64-apple-darwin/release/petsim
+      - name: Publication sur la release
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          tar -czf "rustypet-macos-universal-$TAG.tar.gz" petsim
+          for i in 1 2 3 4 5; do
+            gh release upload "$TAG" "rustypet-macos-universal-$TAG.tar.gz" --clobber && break
+            sleep 30
+          done

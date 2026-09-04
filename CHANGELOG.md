@@ -1,5 +1,256 @@
 # Changelog
 
+## 0.22.2 — 2026-08-05 · « Le retour du mouton noir »
+
+Les scènes d'origine à deux moutons se jouaient hors écran : corrigé.
+
+- Les `<child>` d'esheep64 se placent avec `imageX`/`imageY` — la position
+  du pet déclencheur — que le moteur laissait à -1. Le mouton noir entrait
+  donc à y=-1 (tronqué en haut de l'écran) et la fleur du broutage poussait
+  à (-37, -1).
+- Le moteur maintient désormais `imageX`/`imageY` à la position courante
+  du pet, et la position d'un enfant est résolue **dans le contexte du
+  parent** au moment de la naissance (`Pet::resolve_child_spawn` +
+  `spawn_at`), sous test (`l_enfant_se_place_par_rapport_au_parent`).
+- Vérifié en simulation (graine 145) : le mouton noir entre par la gauche
+  au niveau du sol avec ses tuiles d'origine, les deux moutons marchent
+  l'un vers l'autre, s'affrontent, puis le noir s'éclipse. La fleur du
+  broutage pousse à côté du mouton.
+
+## 0.22.1 — 2026-08-05 · « Plus rien ne dépasse (ni ne manque) »
+
+Correctif visuel des tuiles RustySheep composées :
+
+- Les rotations (danse, superman) rognaient les coins du sprite
+  (`expand=False`) : rotation désormais sans perte — étendue, recadrée sur
+  les pixels opaques, remise à l'échelle dans la tuile.
+- Le parachute était décapité : la calotte était dessinée au-dessus du bord
+  de la tuile (y = -6). La voilure complète, les suspentes et le mouton
+  tiennent maintenant dans les 40 px.
+- La fusée était minuscule : elle occupe désormais toute la hauteur de la
+  tuile (corps large, ailerons, hublot, flammes contenues), mouton bien
+  visible au sommet.
+- Les volutes de fumée ne débordent plus du haut de la tuile.
+- Capture des vitrines régénérée.
+
+## 0.22.0 — 2026-08-04 · « Le mouton voyage »
+
+Builds multi-plateformes publiés automatiquement sur chaque release.
+
+- Nouveau workflow GitHub Actions `release.yml` (déclenché par les tags,
+  relançable par `workflow_dispatch` sans retaguer) : runners Linux,
+  Windows et macOS + NDK Android.
+- Binaires attachés aux releases : **Linux x86_64 et ARM64** (petd +
+  petsim), **Windows x86_64** (petsim), **macOS universel** Apple
+  Silicon + Intel via `lipo` (petsim), **Android ARM64** (petsim, à
+  lancer dans Termux).
+- Périmètre assumé : le pet à l'écran (petd + extension) reste
+  Linux/GNOME — D-Bus et GNOME Shell ne voyagent pas. Ce qui voyage,
+  c'est le simulateur headless et les bibliothèques du moteur (Rust pur),
+  vérifiés par `cargo check` croisé (msvc, android, aarch64-linux).
+- README : nouvelle section « Multi-plateforme ».
+
+## 0.21.0 — 2026-08-04 · « Bêê. (discrètement) »
+
+Le mouton a une voix — mais il ne s'en sert pas pour hurler.
+
+- Moteur : au démarrage d'une animation, tirage des `<sound>` associés
+  selon leur probabilité (`Pet::take_sound`, agrégé par `Flock`). Les pets
+  du corpus sans sons gardent des traces strictement identiques ; le neko,
+  qui en a, voit sa trace décalée d'un tirage (snapshot mis à jour).
+- pet-format : `decode_sound` (base64 → octets audio).
+- petd : les sons sont écrits en cache (`sound-<i>.wav`) au chargement ;
+  nouveau signal D-Bus `PetSound(s)` avec le chemin du fichier.
+- Extension : lecture via `global.display.get_sound_player()` — l'API
+  sonore native de GNOME, qui respecte le mixeur du système.
+- RustySheep : bêlement emprunté au blue_sheep du corpus, converti en WAV
+  mono et **atténué à 18 % d'amplitude** à la génération (ffmpeg). Accroché
+  au coup de foudre (probabilité 70), au parachute (40) et à
+  l'atterrissage (8). Un test verrouille la discrétion : pic PCM < 30 %
+  de l'échelle.
+
+## 0.20.0 — 2026-08-04 · « Attrape-moi si tu peux »
+
+Le glisser-déposer à la souris : on attrape le pet principal, il gigote
+(l'animation `drag` d'origine), on le promène, on le lâche… il tombe.
+
+- Moteur : `drag_to` déplace immédiatement (zéro latence visuelle), le
+  tick ne fait que confirmer ; le relâcher enchaîne sur `fall`.
+- petd : méthodes D-Bus `BeginDrag`, `DragTo(ii)`, `EndDrag`, couvertes
+  par le smoke test.
+- Extension : le pet principal est réactif — grab Clutter au clic, suivi
+  local du pointeur, envois D-Bus throttlés à 33 ms (`dragSendDue`,
+  testée sous gjs) ; pendant le glisser, le signal du démon ne pilote
+  plus la position du principal.
+
+## 0.19.0 — 2026-08-04 · « La moutonne, les agneaux : le troupeau »
+
+RustyPet devient multi-pets : le format `<childs>` d'eSheep prend vie.
+
+- Moteur : nouveau `Flock` — le pet principal et ses enfants, chacun
+  cadencé à l'intervalle de sa propre animation (échéancier en
+  millisecondes, déterministe). Les enfants déclarés par une animation
+  naissent (`Pet::spawn_child`, position exprimée par le XML), se ferment
+  en fin de chaîne ou en sortant de l'écran, plafond de 6 enfants.
+- petd : `advance(elapsed)` retourne tous les acteurs ; le signal D-Bus
+  `PetState` devient un tableau `a(iiubu)`, le principal en tête.
+- Extension : un widget par acteur, créés et détruits au fil du signal.
+- petsim : trace du troupeau complet (colonnes « enfant » sur chaque ligne).
+- RustySheep : le coup de foudre — `love` (112, cœurs plein la tête)
+  fait entrer la **moutonne** (laine rosée, nœud, cils de sa démarche)
+  qui traverse l'écran vers lui, puis `family_walk` (113) fait trottiner
+  **deux agneaux** derrière le couple. Sept tuiles inédites (211-217).
+- Bonus : les scènes à deux moutons d'origine d'esheep64 (bain, mouton
+  noir) fonctionnent désormais aussi, leurs childs étant enfin honorés.
+
+## 0.18.0 — 2026-08-04 · « Un petit nuage au-dessus de la tête »
+
+Trois animations météo pour RustySheep, toujours 100 % data-driven :
+
+- `rain` (109) : un nuage gris s'installe au-dessus du mouton et la pluie
+  commence à tomber. Deux issues à 50/50 :
+- `soaked` (110) : trempé jusqu'aux os — laine assombrie et bleutée,
+  gouttes qui perlent, flaque au sol ;
+- `umbrella` (111) : il sort un parapluie rouge et attend que ça passe.
+- Six tuiles inédites (205-210), accroche depuis la marche (probabilité 3).
+- Les index de tuiles 176-204 de la 0.17 restent inchangés (bloc pluie
+  ajouté en fin de sheet, passée de 13 à 14 lignes).
+
+## 0.17.0 — 2026-08-04 · « RustySheep : les gags complètement oufs »
+
+Nouveau pet embarqué `assets/rustysheep/animations.xml` : le mouton eSheep 64
+enrichi de neuf gags inédits, sans une ligne de moteur en plus — tout passe
+par le format data-driven d'origine.
+
+- Neuf animations nouvelles (id ≥ 100) : `dance` (déhanché + notes de
+  musique), `smoke` (joint et volutes), `superman` (cape rouge, sortie
+  d'écran en diagonale puis respawn), `poop` (petite crotte fièrement
+  assumée), `sunglasses` (« deal with it »), `flower_grow` (une fleur pousse
+  en trois stades, il la mange), `parachute` (nouvelle arrivée possible,
+  spawn dédié), `rocket` (décollage accéléré par interpolation start→end),
+  `acid` (teintes psychédéliques cyclées, yeux en spirale, marche titubante).
+- Les classiques restent hérités du mouton : dormir (`sleep1-3`), brouter
+  (`eat`), respirer une fleur (`flower`).
+- `tools/make_rustysheep.py` : générateur committé (PIL) qui compose les
+  29 tuiles inédites par-dessus les sprites d'origine (crédits conservés
+  dans l'en-tête) et étend la sheet de 11 à 13 lignes.
+- Tests : `crates/pet-format/tests/rustysheep.rs` — parsing, présence des
+  neuf gags, atteignabilité depuis les spawns (parcours de graphe), frames
+  couvertes par la sheet, aucune impasse. Validé en simulation petsim sur
+  10 graines × 4000 ticks : chaque gag apparaît, la marche reste crédible
+  (65 % du temps contre 88 % avant).
+
+## 0.16.0 — 2026-08-02 · « Marche sur les fenêtres et choix du pet »
+
+Le pet fait enfin ses trucs de mouton : il tombe du haut de l'écran, atterrit
+sur le toit des fenêtres, les arpente, en tombe, et réagit quand elles bougent.
+
+- Moteur : atterrissage sur le toit d'une fenêtre pendant une descente
+  (sémantique `FallDetect` du moteur d'origine §4.5 : franchissement du bord
+  haut, tolérance latérale d'une demi-tuile), suivi des bords de la fenêtre
+  (contexte `only="window"`) au lieu des bords d'écran, et chute quand la
+  fenêtre disparaît ou bouge sous le pet. TDD : trois nouveaux tests.
+- petd : méthode D-Bus `UpdateWindows(a(iiii))` qui alimente `World::windows` ;
+  couverte par le smoke test D-Bus.
+- Extension : remontée des fenêtres visibles (type NORMAL, non minimisées)
+  toutes les 500 ms, seulement quand la géométrie change ; une fenêtre plein
+  écran neutralise la marche, comme l'original.
+- Choix du pet : `~/.config/rustypet/pet` contient le chemin d'un
+  `animations.xml` ; repli sur le neko si absent. Le mouton `esheep64` (et les
+  27 autres pets du corpus) devient utilisable.
+- petsim : option répétable `--window x,y,l,h` pour simuler des fenêtres, et
+  colonne `anim=` dans la trace.
+
+## 0.15.2 — 2026-08-02 · « Le pet s'anime enfin à l'écran »
+
+Trois causes racines distinctes empêchaient tout rendu correct :
+
+- Extension : `connectSignal` ne relaie les signaux D-Bus que sur les proxys
+  issus de `makeProxyWrapper` ; sur le proxy nu de l'extension, aucun signal
+  `PetState` n'arrivait. Écoute directe de `g-signal` avec filtre sur le nom.
+- Extension : St (GNOME Shell 50) ne supporte pas `background-position`, le
+  tuilage CSS affichait la planche entière statique. Nouveau rendu : conteneur
+  clippé à la taille d'une tuile (`clip_to_allocation`) contenant la planche
+  entière déplacée aux offsets calculés par `petMath.js`.
+- Moteur : un bord franchi sans transition `<border>` éligible était ignoré et
+  le pet dérivait hors écran à l'infini (x observé à −27 000). Conformément à
+  la spec, le tick renvoie désormais `Respawn` (pet principal) ou `Close`
+  (enfant) — test `sans_transition_de_bord_le_pet_respawne_au_lieu_de_sortir`.
+- README : commandes `cargo install` explicites (le manifeste du workspace est
+  virtuel, `cargo install --path .` échoue ; il faut cibler chaque crate).
+
+## 0.15.1 — 2026-07-21 · « Session de développement robuste »
+
+- `dev-session.sh` détecte l'absence de `/usr/lib/mutter-devkit` (non empaqueté
+  sur Arch) et bascule sur la voie de test en session réelle.
+- README : voie de test clarifiée, ajout du contrôle du démon sans compositeur.
+
+## 0.15.0 — 2026-07-21 · « Rendu bout-en-bout sous GNOME »
+
+- Scripts d'installation de l'extension et de session de développement.
+- README : comment voir le pet à l'écran, en session réelle ou imbriquée.
+- Squelette de rendu complet : un pet animé, physique des bords d'écran.
+
+## 0.14.1 — 2026-07-21 · « Correctif : acteur zombie sur disable() pendant la connexion »
+
+- `extension.js` : `_connect()` est asynchrone (un seul point d'`await`, sur
+  `Gio.DBusProxy.new_for_bus`) et lancée depuis un timeout GLib. Si
+  `disable()` s'exécutait pendant cette suspension, il ne trouvait ni proxy
+  ni acteur à nettoyer, puis `_connect()` reprenait après coup et créait
+  malgré tout le proxy, l'acteur `St.Widget` et l'abonnement au signal
+  `PetState` — ressources fantômes survivant au démontage, qu'un `enable()`
+  suivant ne pouvait plus détruire (référence écrasée).
+- Ajout du drapeau `this._destroyed` (posé par `disable()` avant tout autre
+  nettoyage) : `_connect()` le vérifie juste après son unique `await` et
+  abandonne sans rien assigner ni créer si l'extension a été démontée
+  entre-temps.
+- Comportement nominal inchangé : quand `disable()` n'intervient pas
+  pendant la connexion, le pet s'affiche normalement.
+
+## 0.14.0 — 2026-07-21 · « Extension GNOME : affichage »
+
+- Extension GNOME Shell 50 (ESM) : lancement de petd, géométrie, rendu.
+- Acteur St.Widget piloté par le signal PetState (position, tuile,
+  miroir, opacité).
+
+## 0.13.0 — 2026-07-21 · « Extension : logique de tuile »
+
+- Module `petMath.js` : décalage de tuile, bornage d'opacité.
+- Testé hors GNOME via gjs-console (découpe en ligne d'abord).
+
+## 0.12.0 — 2026-07-21 · « Démon petd : service D-Bus »
+
+- `petd` possède `dev.yrbane.RustyPet`, expose `Configure` et `GetSprite`.
+- Émission du signal `PetState` à la cadence des animations.
+- Test d'intégration D-Bus scriptable (dbus-run-session), sans GNOME.
+
+## 0.11.0 — 2026-07-21 · « Démon petd : pilote du moteur »
+
+- `Engine` : chargement d'un pet, apparition sur géométrie fournie.
+- Avance pas à pas convertie en `PetFrame` (opacité échelle Clutter).
+- Logique du démon entièrement testable sans D-Bus, déterministe.
+
+## 0.10.1 — 2026-07-21 · « Correctifs de revue : cache_dir toujours absolu »
+
+- `cache_dir()` (crate `petd`) retournait un chemin **relatif** dans le cas
+  limite où ni `XDG_CACHE_HOME` (absolu) ni `HOME` n'étaient exploitables :
+  repli désormais garanti absolu sur `std::env::temp_dir()`. Un démon
+  n'écrit ainsi jamais à un chemin dépendant de son répertoire courant.
+- Test `cache_dir_respecte_xdg` renforcé : vérifie désormais la valeur
+  exacte du chemin produit (et son caractère absolu), pas seulement le nom
+  du dernier composant.
+- Nouveau test `cache_dir_reste_absolu_sans_home_ni_xdg` couvrant la
+  régression ci-dessus (ni `HOME` ni `XDG_CACHE_HOME` dans l'environnement).
+- Les tests manipulant `XDG_CACHE_HOME`/`HOME` restaurent désormais l'état
+  d'origine de l'environnement via une garde RAII (`EnvVarGuard`), pour ne
+  pas polluer les autres tests du binaire ; tous portent `#[serial]`.
+
+## 0.10.0 — 2026-07-21 · « Démon petd : cache du spritesheet »
+
+- Nouveau crate `petd` (démon).
+- Écriture du spritesheet décodé en PNG dans le cache utilisateur (XDG).
+- Slugification sûre du nom de pet pour le chemin de cache.
+
 ## 0.9.2 — 2026-07-20 · « Retouches de revue »
 
 - Factorisation du tirage pondéré cumulatif de `pick_next` et `pick_spawn`

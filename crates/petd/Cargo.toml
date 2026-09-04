@@ -1,0 +1,19 @@
+[package]
+name = "petd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+pet-engine = { path = "../pet-engine" }
+pet-format = { path = "../pet-format" }
+zbus = { workspace = true }
+tokio = { workspace = true }
+image.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+serial_test = "3"
